@@ -1,0 +1,11 @@
+(function() {
+	
+	!function(style) {
+		style && $('<style>').text(style).appendTo('body');
+    }(${widgetStyle});
+
+    // var exo = {};
+    // exo.templte = ['${widgetTemplates}'];
+    return function(){return ${widgetContent}}();
+
+})();

@@ -1,0 +1,34 @@
+{
+  "name": "ex-tool",
+  "version": "0.1.0",
+  "description": "Exosite service development tools",
+  "main": " ",
+  "repository": "git@i.exosite.com:willytseng/exosite-service-tools.git",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "exosite",
+    "tool"
+  ],
+  "author": "Willy Tseng",
+  "license": "Exosite",
+  "dependencies": {
+    "commander": "^2.2.0",
+    "extend": "^1.2.1",
+    "gulp": "^3.8.11",
+    "js-yaml": "^3.2.7",
+    "multimeter": "^0.1.1",
+    "q": "^1.0.1",
+    "read": "^1.0.5",
+    "request": "^2.36.0",
+    "request-progress": "^0.3.1",
+    "watch": "^0.10.0",
+    "through2": "~0.6.3"
+  },
+  "devDependencies": {
+    "debug": "^1.0.2",
+    "gulp-util": "~3.0.4",
+    "through2": "~0.6.3"
+  }
+}
