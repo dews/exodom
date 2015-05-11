@@ -37,7 +37,7 @@ function uploadWidget(task) {
 
 function createTheme(task) {
     debug('createTheme');
-    var url = 'https://' + task.toDomain + '/api/portals/v1/themes/';
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/';
 
     extend(task, {
         json: task.fileContent,
@@ -59,7 +59,7 @@ function downloadTheme(task) {
 function uploadTheme(task) {
     debug('uploadTheme');
 
-    var url = 'https://' + task.toDomain + '/api/portals/v1/themes/' + task.themeId;
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/' + task.themeId;
 
     extend(task, {
         json: task.fileContent,
@@ -72,7 +72,7 @@ function uploadTheme(task) {
 function downloadDomainConfig(task) {
     debug('downloadDomainConfig');
 
-    var url = 'https://' + task.fromDomain + '/api/portals/v1/domains/_this';
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
 
     extend(task, _opt);
 
@@ -83,7 +83,7 @@ function uploadDomainConfig(task) {
     debug('uploadDomainConfig');
     debug(task.file);
 
-    var url = 'https://' + task.toDomain + '/api/portals/v1/domains/_this';
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
 
     extend(task, {
         json: task.fileContent
@@ -92,17 +92,14 @@ function uploadDomainConfig(task) {
     return html('put', url, task);
 }
 
-
-
 function fetchTheme(task) {
-    var url = 'https://' + task.fromDomain + '/admin/theme';
+    var url = 'https://' + task[task.current].domain + '/admin/theme';
 
     return html('get', url, task);
 }
 
 function checkSession(task) {
     var deferred = Q.defer();
-
     var signinPage = 'https://' + task[task.current].domain + '/login';
     var signinRequest = 'https://' + task[task.current].domain + '/process';
     var login_opt = {
@@ -118,12 +115,11 @@ function checkSession(task) {
     opt.jar = request.jar();
 
     if (task.cookie && task.cookie[task[task.current].domain]) {
-        // debug(task.cookie[task[task.current].domain]);
+        debug(task.cookie[task[task.current].domain]);
         opt.jar.setCookie(task.cookie[task[task.current].domain], 'http://' + task[task.current].domain);
     }
 
     request.get(signinPage, opt, function(err, response, body) {
-
         if (err) {
             deferred.reject(err);
             return;
@@ -136,11 +132,13 @@ function checkSession(task) {
             return;
         }
 
-        // need authentication
-        var matches = body.match(/<input type="hidden" name="formname" value="accountlogin" \/><input type="hidden" name="postid" value="([a-z0-9]+)" \/>/);
+        // at production domain it have a empty space: "value="accountlogin" \/>", but at signoff it doesn't: "value="accountlogin"\/>"
+        // so format like "value="accountlogin"\s*\/>""
+        var matches = body.match(/<input type="hidden" name="formname" value="accountlogin"\s*\/><input type="hidden" name="postid" value="([a-z0-9]+)"\s*\/>/);
 
         if (!matches) {
             debug('post id not found');
+            console.error('signin page unavailable')
             deferred.reject('signin page unavailable');
             return;
         }
@@ -149,14 +147,14 @@ function checkSession(task) {
         var form = {
             formname: 'accountlogin',
             postid: matches[1],
-            'form[user]': task.auth.username,
-            'form[pass]': task.auth.password
+            'form[user]': task[task.current].auth.username,
+            'form[pass]': task[task.current].auth.password
         };
 
         opt.headers.Origin = 'https://' + task[task.current].domain;
         opt.headers.Refer = 'https://' + task[task.current].domain + '/login';
-        request.post(signinRequest, opt, function(err, response, body) {
 
+        request.post(signinRequest, opt, function(err, response, body) {
             debug('formpost result:' + response.statusCode);
 
             body = body.trim();
@@ -185,18 +183,20 @@ function checkSession(task) {
 }
 
 function html(reqType, url, task) {
+console.log('url ' , url);
     debug('upload');
 
     var deferred = Q.defer();
     var options = extend({
         method: reqType,
         url: url,
-        jar: request.jar(),
+        jar: request.jar()
     }, task);
 
-    if (task.auth && task.auth.username && task.auth.password) {
-        options.auth = task.auth;
+    if (task[task.current].auth && task[task.current].auth.username && task[task.current].auth.password) {
+        options.auth = task[task.current].auth;
     }
+
     request(options, function(err, response, body) {
         debug(response);
         debug(body);

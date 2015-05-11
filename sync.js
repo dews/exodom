@@ -3,17 +3,15 @@
 settings = {
     source: {
         url: 'taichung.exosite.com',
-        widgetId: 1846278371,
         themeId: '',
         username: 'calvinzheng@exosite.com',
-        password: 'Swqaswqa1'
+        password: ''
     },
     target: {
         url: 'basco-dev.exosite.com',
         themeId: '',
-        widget: '',
         username: 'calvinzheng@exosite.com',
-        password: 'Swqaswqa1'
+        password: ''
     }
 };
 
@@ -34,13 +32,11 @@ Q.longStackSupport = true;
 
 // constants
 var COOKIE_PATH = os.tmpdir() + path.sep + '.wiget-uploader-cookie';
-console.log('path.sep ' , path.sep);
-
 debug('cookie: ' + COOKIE_PATH);
 
 program
     .version('0.0.1')
-    .command('setup [type] [from_domain] [to_domain]')
+    .command('setup <save, restore, sync> [from_domain] [to_domain]')
     .action(function(cmd, fromDomain, toDomain, options) {
         program.cmd = cmd;
         program.opt = options;
@@ -50,6 +46,7 @@ program
             } else {
                 program.fromDomain = fromDomain;
                 program.toDomain = toDomain;
+                program.current = 'source';
             }
         } else if (cmd === 'save') {
             if (!fromDomain) {
@@ -67,18 +64,17 @@ program
             }
         }
     })
-    .usage('<save,restore,sync> [path]')
+    .usage('setup <save, restore, sync> [path]')
     .option('-t, --theme [theme_id]', 'Upload theme. If theme_id ommit, deal all themes. If dont have default theme, create one. Please avoid same name.')
     .option('-d, --domain-config', 'Upload domanin config')
     .option('-w, --widget', 'Upload widget')
-    .option('-u, --user <account:password>', 'This argument is higher priority than env.EXO_W_USER')
+    .option('-u, --user <account:password,account:password>', 'If you choose sync you need enter two sets of account.')
     .option('-f, --force', 'Force update')
-    .option('-p, --path <path>', 'Saving path');
+    .option('-p, --path <path>', 'Saving path, if ommit, using ./');
 
 program.parse(process.argv);
 
 var task = {
-    widgetId: settings.source.widgetId,
     themeId: settings.source.themeId || '',
 
     // normalize file paths
@@ -88,16 +84,16 @@ var task = {
         domain: program.fromDomain || '',
         // session control
         auth: {
-            username: settings.source.username || process.env.EXO_W_USER,
-            password: settings.source.password || process.env.EXO_W_USER
+            username: settings.source.username,
+            password: settings.source.password
         },
         cookie: ''
     },
     target: {
         domain: program.toDomain || '',
         auth: {
-            username: settings.target.username || process.env.EXO_W_PASS,
-            password: settings.target.password || process.env.EXO_W_PASS
+            username: settings.target.username,
+            password: settings.target.password
         },
         cookie: ''
     },
@@ -106,13 +102,19 @@ var task = {
 
 task.path = task.origPath;
 
-if (program.user) {
-    task.auth.username = program.user.split(':')[0];
-    task.auth.password = program.user.split(':')[1];
+if (program.opt.user) {
+    var ac = program.opt.user.split(',');
+    var targetAc = ac[1];
+    task.source.auth.username = ac[0].split(':')[0];
+    task.source.auth.password = ac[0].split(':')[1];
+    task.target.auth.username = ac[0].split(':')[0];
+    task.target.auth.password = ac[0].split(':')[1];
+
+    if (targetAc) {
+        task.target.auth.username = targetAc.split(':')[0];
+        task.target.auth.password = targetAc.split(':')[1];
+    }
 }
-
-task.host = task.fromDomain;
-
 authenticate(task).then(function(task) {
     return uploader.checkSession(task);
 }).then(function(task) {
@@ -152,13 +154,17 @@ function command(task) {
             });
         } else if (program.opt.domainConfig) {
             downloadDomainConfig(task).then(function(task) {
+                task.current = 'traget';
                 uploadDomainConfig(task);
             });
         } else {
             downloadThemes(task).then(function(task) {
+                task.current = 'traget';
                 return uploadThemes(task);
             });
             downloadDomainConfig(task).then(function(task) {
+                console.log('task ', task);
+                task.current = 'traget';
                 uploadDomainConfig(task);
             });
         }
@@ -244,8 +250,9 @@ function uploadTheme(task) {
             task.themeId = task.idMap[name].id;
             return uploader.uploadTheme(task);
         } else {
+            console.log('Theme %s not exist, create new theme', name);
             return uploader.createTheme(task).then(function(task) {
-                console.log('Theme %s not exist, create new theme', name);
+                task.themeId = task.contain.id;
                 return uploader.uploadTheme(task);
             });
         }
@@ -309,6 +316,7 @@ function downloadDomainConfig(task) {
 function uploadDomainConfig(task) {
     return readFile(task, task.origPath + 'domain_config.json')
         .then(function(task) {
+            task.current = 'target';
             return uploader.uploadDomainConfig(task);
         }).then(function() {
             console.log('Restore domain config success');
@@ -359,7 +367,6 @@ function authenticate(task) {
         debug(cookie);
 
         task[task.current].cookie = cookie;
-
         if (!cookie[task[task.current].domain]) {
             promptPwd('cookie not found ');
             return;
@@ -371,11 +378,12 @@ function authenticate(task) {
     var promptPwd = function(err) {
         debug('no cookies found');
 
-        if (task.auth.username) {
+        if (task[task.current].auth.username && task[task.current].auth.password) {
+            deferred.resolve(task);
+        } else if (task[task.current].auth.username) {
             debug('prompt');
-
             promptPassword().spread(function(pwd) {
-                task.auth.password = pwd;
+                task[task.current].auth.password = pwd;
                 deferred.resolve(task);
             });
         } else {
