@@ -40,7 +40,10 @@ function createTheme(task) {
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/';
 
     extend(task, {
-        json: task.fileContent,
+        json: {
+            name: task.fileContent.name,
+            description: task.fileContent.description
+        },
     }, _opt);
 
     return html('post', url, task);
@@ -183,7 +186,6 @@ function checkSession(task) {
 }
 
 function html(reqType, url, task) {
-console.log('url ' , url);
     debug('upload');
 
     var deferred = Q.defer();
@@ -219,6 +221,7 @@ console.log('url ' , url);
             console.error('You need globe permission.');
         }
 
+        console.error('body', body);
         deferred.reject(reqType + ' failed');
     });
 
@@ -242,4 +245,3 @@ exports.downloadDomainConfig = downloadDomainConfig;
 exports.uploadDomainConfig = uploadDomainConfig;
 
 exports.checkSession = checkSession;
-

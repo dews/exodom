@@ -115,6 +115,7 @@ if (program.opt.user) {
         task.target.auth.password = targetAc.split(':')[1];
     }
 }
+
 authenticate(task).then(function(task) {
     return uploader.checkSession(task);
 }).then(function(task) {
@@ -136,7 +137,7 @@ function command(task) {
     }
 
     if (program.cmd === 'restore') {
-        task.current = 'traget';
+        task.current = 'target';
 
         if (program.opt.theme) {
             uploadThemes(task);
@@ -150,21 +151,21 @@ function command(task) {
     if (program.cmd === 'sync') {
         if (program.opt.theme) {
             downloadThemes(task).then(function(task) {
+                task.current = 'target';
                 uploadThemes(task);
             });
         } else if (program.opt.domainConfig) {
             downloadDomainConfig(task).then(function(task) {
-                task.current = 'traget';
+                task.current = 'target';
                 uploadDomainConfig(task);
             });
         } else {
             downloadThemes(task).then(function(task) {
-                task.current = 'traget';
+                task.current = 'target';
                 return uploadThemes(task);
             });
             downloadDomainConfig(task).then(function(task) {
-                console.log('task ', task);
-                task.current = 'traget';
+                task.current = 'target';
                 uploadDomainConfig(task);
             });
         }
@@ -177,21 +178,25 @@ function command(task) {
 
 function downloadThemes(task) {
     return uploader.downloadTheme(task).then(function(task) {
+        var deferred = Q.defer();
         var contain = JSON.parse(task.contain);
         var fsPath = path.join(task.origPath, 'theme/');
-
+        var promise = [];
         contain.forEach(function(theme, i) {
             theme.name = theme.name.replace(/\s+/g, '_');
-            saveFile(fsPath + theme.name + '_' + theme.id + '.json', JSON.stringify(theme, null, 4));
-            saveImage(fsPath + 'img_' + theme.name + '_' + theme.id + '/', theme);
+            promise.push(saveFile(fsPath + theme.name + '_' + theme.id + '.json', JSON.stringify(theme, null, 4)));
+            // promise.push(saveImage(fsPath + 'img_' + theme.name + '_' + theme.id + '/', theme));
         });
 
-        return task
-    }).then(function(task) {
-        console.log('Save themes success');
-        return task;
-    }, function() {
-        console.log('Save themes fail');
+        Q.all(promise).then(function() {
+            console.log('Save themes success');
+            deferred.resolve(task);
+        }, function() {
+            console.log('Save themes fail');
+            deferred.reject();
+        });
+
+        return deferred.promise;
     });
 }
 
@@ -200,29 +205,29 @@ function uploadThemes(task) {
     var promise = [];
     var fsPath = path.join(task.origPath, 'theme/');
     var files = fs.readdirSync(fsPath);
-    var themesName = [];
+    var filesName = [];
     var fileMap = {};
-    task.current = 'target';
 
     files.forEach(function(v, i) {
         if (v.match(/.json/)) {
-            themesName.push(v);
+            filesName.push(v);
         }
     });
 
     uploader.downloadTheme(task)
         .then(function(task) {
-            var sourceThemes = JSON.parse(task.contain);
+
+            var targetThemes = JSON.parse(task.contain);
             task.idMap = {};
 
-            sourceThemes.forEach(function(v, i) {
+            targetThemes.forEach(function(v, i) {
                 task.idMap[v.name] = {
                     id: v.id,
                     description: v.description
                 };
             });
 
-            themesName.forEach(function(fileName, i) {
+            filesName.forEach(function(fileName, i) {
                 task.path = path.join(task.origPath, 'theme', fileName);
                 promise.push(uploadTheme(task));
             });
@@ -240,10 +245,12 @@ function uploadThemes(task) {
 }
 
 function uploadTheme(task) {
+    // Avoid when do muti job, effect each other.
+    var cloneTask = JSON.parse(JSON.stringify(task));
     var deferred = Q.defer();
     // uploadImage(task);
 
-    readFile(task).then(function(task) {
+    readFile(cloneTask).then(function(task) {
         var name = task.fileContent.name;
 
         if (task.idMap[name]) {
@@ -251,10 +258,11 @@ function uploadTheme(task) {
             return uploader.uploadTheme(task);
         } else {
             console.log('Theme %s not exist, create new theme', name);
-            return uploader.createTheme(task).then(function(task) {
-                task.themeId = task.contain.id;
-                return uploader.uploadTheme(task);
-            });
+            return uploader.createTheme(task)
+                .then(function(task) {
+                    task.themeId = task.contain.id;
+                    return uploader.uploadTheme(task);
+                });
         }
     }).then(function(task) {
         deferred.resolve();
