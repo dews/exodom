@@ -21,7 +21,9 @@ var Q = require('q'),
     program = require('commander'),
     request = require('request'),
     fs = require('fs-extra'),
-    console = require('better-console');
+    console = require('better-console'),
+    jsdom = require('jsdom'),
+    extend = require('extend');
 
 var os = require('os'),
     path = require('path');
@@ -116,13 +118,9 @@ if (program.opt.user) {
     }
 }
 
-authenticate(task).then(function(task) {
-    return uploader.checkSession(task);
-}).then(function(task) {
-    return saveCookie(task.cookie);
-}).then(function() {
-    command(task);
-});
+    console.log('path ' , path);
+
+command(task);
 
 function command(task) {
     if (program.cmd === 'save') {
@@ -185,7 +183,7 @@ function downloadThemes(task) {
         contain.forEach(function(theme, i) {
             theme.name = theme.name.replace(/\s+/g, '_');
             promise.push(saveFile(fsPath + theme.name + '_' + theme.id + '.json', JSON.stringify(theme, null, 4)));
-            // promise.push(saveImage(fsPath + 'img_' + theme.name + '_' + theme.id + '/', theme));
+            promise.push(saveImage(fsPath + 'img_' + theme.name + '_' + theme.id + '/', theme));
         });
 
         Q.all(promise).then(function() {
@@ -216,7 +214,6 @@ function uploadThemes(task) {
 
     uploader.downloadTheme(task)
         .then(function(task) {
-
             var targetThemes = JSON.parse(task.contain);
             task.idMap = {};
 
@@ -245,10 +242,9 @@ function uploadThemes(task) {
 }
 
 function uploadTheme(task) {
-    // Avoid when do muti job, effect each other.
+    // Avoid when do muti job at same time, effect each other.
     var cloneTask = JSON.parse(JSON.stringify(task));
     var deferred = Q.defer();
-    // uploadImage(task);
 
     readFile(cloneTask).then(function(task) {
         var name = task.fileContent.name;
@@ -265,9 +261,14 @@ function uploadTheme(task) {
                 });
         }
     }).then(function(task) {
-        deferred.resolve();
+        return uploadImage(task);
     }, function() {
         console.error('Upload theme fail');
+        deferred.reject();
+    }).then(function(task) {
+        deferred.resolve();
+    }, function() {
+        console.error('Upload images fail');
         deferred.reject();
     });
     return deferred.promise;
@@ -290,7 +291,9 @@ function saveImage(path, theme) {
             };
             if (url) {
                 var writeStream = fs.createWriteStream(path + v + '.png', 'utf8');
-                request(options).pipe(writeStream);
+                request(options).pipe(writeStream).on('finish', function() {
+                    deferred.resolve();
+                });
             }
         });
 
@@ -299,11 +302,66 @@ function saveImage(path, theme) {
     return deferred.promise;
 }
 
-// Don't work now
 function uploadImage(task) {
-    uploader.fetchTheme(task).then(function(res) {
-        console.log('res ', res);
+    var deferred = Q.defer();
+
+    var imgPath = path.parse(task.path).dir + path.parse(task.path).name;
+
+    authenticate(task).then(function(task) {
+        return uploader.checkSession(task);
+    }).then(function(task) {
+        return saveCookie(task.cookie);
+    }).then(function() {
+        uploader.getThemeList(task).then(function(data) {
+            var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+
+            jsdom.env(html, ["http://code.jquery.com/jquery.js"], function(errors, window) {
+                errors && console.log('errors ', errors);
+                var $ = window.$;
+                var postId = $('#admin .title').parents('form').find('input[name="postid"]').attr('value');
+                var value = $('#admin .title').parents('form').find('td:contains("Test_Background")').parents('tr').find('td:nth-child(2) input').attr('name');
+                var form = {
+                    formname: "list_Theme",
+                    postid: postId
+                };
+                form[value] = '';
+                task.form = form;
+                uploader.getTheme(task).then(function(data) {
+                    var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+
+                    jsdom.env(html, ["http://code.jquery.com/jquery.js"], function(errors, window) {
+                        errors && console.log('errors ', errors);
+                        var $ = window.$;
+                        var postId = $('form.computed').find('input[name="postid"]').attr('value');
+                        var themeId = $('form.computed').find('input[name="Theme_id"]').attr('value');
+                        var formName = $('form.computed').find('input[name="formname"]').attr('value');
+                        var form = {
+                            formname: formName,
+                            postid: postId,
+                            Theme_id: themeId,
+                            'Config[dashboard_background][background_color]': '222222',
+                            browser_tab_icon: fs.createReadStream(imgPath + 'theme.name/browser_tab_icon.png')
+
+                        };
+
+                        task.form = form;
+
+                        uploader.updateTheme(task).then(function(data) {
+                            var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+
+                            fs.writeFileSync('./test.html', html, 'utf8');
+                            deferred.resolve();
+
+                        });
+
+                    });
+
+                });
+
+            });
+        });
     });
+    return deferred.promise;
 }
 
 function downloadDomainConfig(task) {

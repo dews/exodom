@@ -11,64 +11,64 @@ var Q = require('q'),
     debug = require('debug')('widget-html'),
     console = require('better-console');
 
-var _opt = {
-    strictSSL: false,
-    followRedirect: false
-};
-
 function uploadWidget(task) {
     debug('uploadWidget');
     debug(task.fileContent);
 
     var body = {
-        code: task.fileContent
+        code: task.fileContent,
+        method: 'put'
     };
     // debug(body);
 
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/widget-scripts/' + task.widgetId;
 
     extend(task, {
-        json: body,
-        followRedirect: false
+        json: body
     });
 
-    return html('put', url, task);
+    return html(url, task);
 }
 
 function createTheme(task) {
     debug('createTheme');
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/';
 
-    extend(task, {
+    var opt = {
+        url: url,
         json: {
             name: task.fileContent.name,
             description: task.fileContent.description
         },
-    }, _opt);
+        method: 'post'
+    };
 
-    return html('post', url, task);
+    return html(opt, task);
 }
 
 function downloadTheme(task) {
     debug('downloadTheme');
     // If task.themeId is null, would download all themes.
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/' + task.themeId;
+    var opt = {
+        url: url,
+        method: 'get'
+    }
 
-    extend(task, _opt);
-
-    return html('get', url, task);
+    return html(opt, task);
 }
 
 function uploadTheme(task) {
     debug('uploadTheme');
 
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/themes/' + task.themeId;
-
-    extend(task, {
+    var opt = {
+        url: url,
         json: task.fileContent,
-    }, _opt);
+        method: 'put'
+    };
 
-    return html('put', url, task);
+    return html(opt, task);
 }
 
 
@@ -76,10 +76,12 @@ function downloadDomainConfig(task) {
     debug('downloadDomainConfig');
 
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
+    var opt = {
+        url: url,
+        method: 'put'
+    }
 
-    extend(task, _opt);
-
-    return html('put', url, task);
+    return html(opt, task);
 }
 
 function uploadDomainConfig(task) {
@@ -87,18 +89,46 @@ function uploadDomainConfig(task) {
     debug(task.file);
 
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
+    var opt = {
+        url: url,
+        json: task.fileContent,
+        method: 'put'
+    };
 
-    extend(task, {
-        json: task.fileContent
-    }, _opt);
-
-    return html('put', url, task);
+    return html(opt, task);
 }
 
-function fetchTheme(task) {
+// Not by API, use portal interface, cookie
+function getThemeList(task) {
     var url = 'https://' + task[task.current].domain + '/admin/theme';
+    var opt = {
+        url: url,
+        method: 'get'
+    };
 
-    return html('get', url, task);
+    return htmlCookie(opt, task);
+}
+// Not by API, use portal interface, cookie
+function getTheme(task) {
+    var url = 'https://' + task[task.current].domain + '/admin/theme';
+    var opt = {
+        url: url,
+        form: task.form,
+        method: 'post'
+    };
+
+    return htmlCookie(opt, task);
+}
+// Not by API, use portal interface, cookie
+function updateTheme(task) {
+    var url = 'https://' + task[task.current].domain + '/admin/theme';
+    var opt = {
+        url: url,
+        formData: task.form,
+        method: 'post'
+    };
+
+    return htmlCookie(opt, task);
 }
 
 function checkSession(task) {
@@ -185,19 +215,16 @@ function checkSession(task) {
     return deferred.promise;
 }
 
-function html(reqType, url, task) {
+function html(opt, task) {
     debug('upload');
 
     var deferred = Q.defer();
     var options = extend({
-        method: reqType,
-        url: url,
-        jar: request.jar()
-    }, task);
+        auth: task[task.current].auth,
+        strictSSL: false,
+        followRedirect: false
+    }, opt);
 
-    if (task[task.current].auth && task[task.current].auth.username && task[task.current].auth.password) {
-        options.auth = task[task.current].auth;
-    }
 
     request(options, function(err, response, body) {
         debug(response);
@@ -212,17 +239,61 @@ function html(reqType, url, task) {
 
         debug('status: ' + response.headers.status);
 
-        if ((response.statusCode == 200 || response.statusCode == 201) && (body || reqType === 'put')) {
+        if ((response.statusCode == 200 || response.statusCode == 201) && (body || opt.method === 'put')) {
             task.contain = body;
             deferred.resolve(task);
-            debug(reqType + 'success');
+            debug(opt.method + 'success');
             return;
         } else if (response.statusCode == 500) {
             console.error('You need globe permission.');
         }
 
         console.error('body', body);
-        deferred.reject(reqType + ' failed');
+        deferred.reject(opt.method + ' failed');
+    });
+
+    return deferred.promise;
+}
+
+function htmlCookie(opt, task) {
+    debug('upload');
+    var _opt = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36'
+        },
+        strictSSL: false
+    };
+    var deferred = Q.defer();
+    var options = extend({
+        jar: request.jar()
+    }, _opt, opt);
+
+    options.jar.setCookie(task.cookie[task[task.current].domain], 'http://' + task[task.current].domain);
+
+    request(options, function(err, response, body) {
+        debug(response);
+        debug(body);
+
+        if (err) {
+            console.error('err, body ', err, body);
+            debug(err);
+            deferred.reject(err);
+            return;
+        }
+
+        debug('status: ' + response.headers.status);
+
+        if ((response.statusCode == 200 || response.statusCode == 201) && (body || opt.method === 'put')) {
+            task.contain = body;
+            deferred.resolve(task);
+            debug(opt.method + 'success');
+            return;
+        } else if (response.statusCode == 500) {
+            console.error('You need globe permission.');
+        }
+
+        console.error('body', body);
+        deferred.reject(opt.method + ' failed');
     });
 
     return deferred.promise;
@@ -236,7 +307,11 @@ exports.createTheme = createTheme;
 
 exports.downloadTheme = downloadTheme;
 
-exports.fetchTheme = fetchTheme;
+exports.getThemeList = getThemeList;
+
+exports.getTheme = getTheme;
+
+exports.updateTheme = updateTheme;
 
 exports.uploadTheme = uploadTheme;
 
