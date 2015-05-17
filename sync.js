@@ -22,7 +22,7 @@ var Q = require('q'),
     request = require('request'),
     fs = require('fs-extra'),
     console = require('better-console'),
-    jsdom = require('jsdom'),
+    cheerio = require('cheerio'),
     extend = require('extend');
 
 var os = require('os'),
@@ -70,7 +70,7 @@ program
     .option('-t, --theme [theme_id]', 'Upload theme. If theme_id ommit, deal all themes. If dont have default theme, create one. Please avoid same name.')
     .option('-d, --domain-config', 'Upload domanin config')
     .option('-w, --widget', 'Upload widget')
-    .option('-u, --user <account:password,account:password>', 'If you choose sync you need enter two sets of account.')
+    .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
     .option('-f, --force', 'Force update')
     .option('-p, --path <path>', 'Saving path, if ommit, using ./');
 
@@ -78,13 +78,10 @@ program.parse(process.argv);
 
 var task = {
     themeId: settings.source.themeId || '',
-
-    // normalize file paths
     origPath: path.normalize(program.opt.path || './'),
     path: '',
     source: {
         domain: program.fromDomain || '',
-        // session control
         auth: {
             username: settings.source.username,
             password: settings.source.password
@@ -99,6 +96,7 @@ var task = {
         },
         cookie: ''
     },
+    // Can switch between source and target.
     current: program.current
 };
 
@@ -109,16 +107,12 @@ if (program.opt.user) {
     var targetAc = ac[1];
     task.source.auth.username = ac[0].split(':')[0];
     task.source.auth.password = ac[0].split(':')[1];
-    task.target.auth.username = ac[0].split(':')[0];
-    task.target.auth.password = ac[0].split(':')[1];
-
-    if (targetAc) {
-        task.target.auth.username = targetAc.split(':')[0];
-        task.target.auth.password = targetAc.split(':')[1];
-    }
+    task.target.auth.username = targetAc ? targetAc.split(':')[0] : ac[0].split(':')[0];
+    task.target.auth.password = targetAc ? targetAc.split(':')[1] : ac[0].split(':')[1];
+} else {
+    console.error('please enter you user acconut, use -u');
+    return;
 }
-
-    console.log('path ' , path);
 
 command(task);
 
@@ -304,8 +298,8 @@ function saveImage(path, theme) {
 
 function uploadImage(task) {
     var deferred = Q.defer();
-
-    var imgPath = path.parse(task.path).dir + path.parse(task.path).name;
+    var imgPath = path.join(path.parse(task.path).dir, 'img_' + path.parse(task.path).name);
+    var themeName = path.parse(task.path).name.replace(/\_\d{10}/g, '');
 
     authenticate(task).then(function(task) {
         return uploader.checkSession(task);
@@ -314,50 +308,57 @@ function uploadImage(task) {
     }).then(function() {
         uploader.getThemeList(task).then(function(data) {
             var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+            var $ = cheerio.load(html);
+            var postId = $('#admin .title').parents('form').find('input[name="postid"]').attr('value');
+            var value = $('#admin .title').parents('form').find('td:contains("' + themeName + '")').parents('tr').find('td:nth-child(2) input').attr('name');
+            var form = {
+                formname: "list_Theme",
+                postid: postId
+            };
 
-            jsdom.env(html, ["http://code.jquery.com/jquery.js"], function(errors, window) {
-                errors && console.log('errors ', errors);
-                var $ = window.$;
-                var postId = $('#admin .title').parents('form').find('input[name="postid"]').attr('value');
-                var value = $('#admin .title').parents('form').find('td:contains("Test_Background")').parents('tr').find('td:nth-child(2) input').attr('name');
+            form[value] = '';
+            task.form = form;
+            uploader.getTheme(task).then(function(data) {
+                var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+                // for debug.
+                fs.writeFileSync('./test.html', html, 'utf8');
+                var $ = cheerio.load(html);
+                var postId = $('form.computed').find('input[name="postid"]').attr('value');
+                var themeId = $('form.computed').find('input[name="Theme_id"]').attr('value');
+                var formName = $('form.computed').find('input[name="formname"]').attr('value');
                 var form = {
-                    formname: "list_Theme",
-                    postid: postId
+                    formname: formName,
+                    postid: postId,
+                    Theme_id: themeId,
+                    'Config[dashboard_background][background_color]': '666666'
                 };
-                form[value] = '';
-                task.form = form;
-                uploader.getTheme(task).then(function(data) {
-                    var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
 
-                    jsdom.env(html, ["http://code.jquery.com/jquery.js"], function(errors, window) {
-                        errors && console.log('errors ', errors);
-                        var $ = window.$;
-                        var postId = $('form.computed').find('input[name="postid"]').attr('value');
-                        var themeId = $('form.computed').find('input[name="Theme_id"]').attr('value');
-                        var formName = $('form.computed').find('input[name="formname"]').attr('value');
-                        var form = {
-                            formname: formName,
-                            postid: postId,
-                            Theme_id: themeId,
-                            'Config[dashboard_background][background_color]': '222222',
-                            browser_tab_icon: fs.createReadStream(imgPath + 'theme.name/browser_tab_icon.png')
-
-                        };
-
-                        task.form = form;
-
-                        uploader.updateTheme(task).then(function(data) {
-                            var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
-
-                            fs.writeFileSync('./test.html', html, 'utf8');
-                            deferred.resolve();
-
-                        });
-
-                    });
-
+                fs.stat(imgPath + '/browser_tab_icon.png', function(err, stat) {
+                    if (err == null) {
+                        form.browser_tab_icon = fs.createReadStream(imgPath + '/browser_tab_icon.png');
+                    }
+                });
+                fs.stat(imgPath + '/header_bkimage.png', function(err, stat) {
+                    if (err == null) {
+                        form.header_bkimage = fs.createReadStream(imgPath + '/header_bkimage.png');
+                    }
+                });
+                fs.stat(imgPath + '/header_logo.png', function(err, stat) {
+                    if (err == null) {
+                        form.header_logo = fs.createReadStream(imgPath + '/header_logo.png');
+                    }
+                });
+                fs.stat(imgPath + '/dashboard_thumbnail.png', function(err, stat) {
+                    if (err == null) {
+                        form.dashboard_thumbnail = fs.createReadStream(imgPath + '/dashboard_thumbnail.png');
+                    }
                 });
 
+                task.form = form;
+
+                uploader.updateTheme(task).then(function(data) {
+                    deferred.resolve();
+                });
             });
         });
     });
