@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+
+// 3rd party
+var debug = require('debug')('main'),
+    program = require('commander'),
+    request = require('request'),
+    console = require('better-console');
+
+var path = require('path');
+
+var utility = require('./utility.js');
+
+program
+    .option('-t, --theme [theme_id]', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name. [theme] not working now.')
+    .option('-d, --domain-config', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name.')
+    .option('-w, --widget', 'work on widget(not working now)')
+    .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
+    // .option('-f, --force', 'Force update')
+    .option('-p, --path <path>', 'Save file path, if omit, using ./');
+
+program.parse(process.argv);
+
+var task = {
+    themeId: '',
+    origPath: path.normalize(program.path || './'),
+    path: '',
+    source: {
+        domain: program.args[0] || '',
+        auth: {
+            username: '',
+            password: ''
+        },
+        cookie: ''
+    },
+    // Can switch between source and target.
+    current: 'source'
+};
+
+task.path = task.origPath;
+
+if (program.user) {
+    var ac = program.user.split(',');
+    task.source.auth.username = ac[0].split(':')[0];
+    task.source.auth.password = ac[0].split(':')[1];
+} else {
+    console.error('please enter you user acconut, use -u');
+    return;
+}
+
+if (program.theme) {
+    utility.downloadThemes(task);
+}else if (program.domainConfig) {
+    utility.downloadDomainConfig(task);
+}else {
+    utility.downloadThemes(task);
+    utility.downloadDomainConfig(task);
+}
+

@@ -108,6 +108,7 @@ function getThemeList(task) {
 
     return htmlCookie(opt, task);
 }
+
 // Not by API, use portal interface, cookie
 function getTheme(task) {
     var url = 'https://' + task[task.current].domain + '/admin/theme';
@@ -119,6 +120,7 @@ function getTheme(task) {
 
     return htmlCookie(opt, task);
 }
+
 // Not by API, use portal interface, cookie
 function updateTheme(task) {
     var url = 'https://' + task[task.current].domain + '/admin/theme';
@@ -128,7 +130,7 @@ function updateTheme(task) {
         method: 'post'
     };
 
-    return htmlCookie(opt, task);
+    return htmlCookie(opt, task, true);
 }
 
 function checkSession(task) {
@@ -255,6 +257,7 @@ function html(opt, task) {
     return deferred.promise;
 }
 
+// use cookie as auth
 function htmlCookie(opt, task) {
     debug('upload');
     var _opt = {
@@ -304,19 +307,11 @@ exports.uploadWidget = function(task) {
 };
 
 exports.createTheme = createTheme;
-
 exports.downloadTheme = downloadTheme;
-
 exports.getThemeList = getThemeList;
-
 exports.getTheme = getTheme;
-
 exports.updateTheme = updateTheme;
-
 exports.uploadTheme = uploadTheme;
-
 exports.downloadDomainConfig = downloadDomainConfig;
-
 exports.uploadDomainConfig = uploadDomainConfig;
-
 exports.checkSession = checkSession;

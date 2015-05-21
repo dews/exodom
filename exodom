@@ -1,0 +1,10 @@
+#!/usr/bin/env iojs
+
+var program = require('commander');
+
+program.version('0.0.1')
+    .command('save <domain>', 'save the domain')
+    .command('restore <domain>', 'restroe the domain')
+    .command('sync <from_domain> <to_domain>', 'sync between domains');
+
+program.parse(process.argv);
