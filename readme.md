@@ -38,7 +38,7 @@ you could be using Ubuntu or node is not properly installed
 you can add
 
     $ alias exodom='node ~/projects/domain_sync/exodom'
-at ~/.bashrc then you can command like this:
+at ~/.bashrc then you can command at anywhere like this:
 
     $ exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
 

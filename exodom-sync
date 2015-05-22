@@ -4,7 +4,8 @@
 var debug = require('debug')('main'),
     program = require('commander'),
     request = require('request'),
-    console = require('better-console');
+    console = require('better-console'),
+    extend = require('extend');
 
 var path = require('path');
 var utility = require('./utility.js');
@@ -12,12 +13,22 @@ var utility = require('./utility.js');
 program
     .option('-t, --theme [theme_id]', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name. [theme] not working now.')
     .option('-d, --domain-config', 'work on domanin config, if you want upload, you need have globe admin.')
-    .option('-w, --widget', 'work on widget(not working now)')
+    .option('-w, --domain-widgets', 'work on widget')
     .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
     // .option('-f, --force', 'Force update')
     .option('-p, --path <path>', 'Saving path, if omit, using ./');
 
 program.parse(process.argv);
+
+if (program.args.length !== 2) {
+    console.error('please enter domain name');
+    return;
+}
+
+if (!/\./g.test(program.args[0]) || !/\./g.test(program.args[0])) {
+    console.error('please enter correct domain name');
+    return;
+}
 
 var task = {
     themeId: '',
@@ -57,23 +68,41 @@ if (program.user) {
     return;
 }
 
-if (program.theme) {
-    utility.downloadThemes(task).then(function(task) {
-        task.current = 'target';
-        return utility.uploadThemes(task);
-    });
-} else if (program.domainConfig) {
-    utility.downloadDomainConfig(task).then(function(task) {
-        task.current = 'target';
-        return utility.uploadDomainConfig(task);
-    });
+if (program.theme || program.domainConfig || program.domainWidgets) {
+    if (program.theme) {
+        utility.downloadThemes(task).then(function(task) {
+            task.current = 'target';
+            utility.uploadThemes(task);
+        });
+    }
+    if (program.domainConfig) {
+        utility.downloadDomainConfig(task).then(function(task) {
+            task.current = 'target';
+            utility.uploadDomainConfig(task);
+        });
+    }
+    if (program.domainWidgets) {
+        utility.downloadWidgets(task).then(function(task) {
+            task.current = 'target';
+            utility.uploadWidgets(task);
+        });
+    }
 } else {
-    utility.downloadThemes(task).then(function(task) {
+    var taskClone = extend({}, task);
+    utility.downloadThemes(taskClone).then(function(task) {
         task.current = 'target';
-        return utility.uploadThemes(task);
+        utility.uploadThemes(task);
     });
-    utility.downloadDomainConfig(task).then(function(task) {
+
+    taskClone = extend({}, task);
+    utility.downloadDomainConfig(taskClone).then(function(task) {
         task.current = 'target';
-        return utility.uploadDomainConfig(task);
+        utility.uploadDomainConfig(task);
+    });
+
+    taskClone = extend({}, task);
+    utility.downloadWidgets(taskClone).then(function(task) {
+        task.current = 'target';
+        utility.uploadWidgets(task);
     });
 }

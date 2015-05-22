@@ -4,7 +4,8 @@ var Q = require('q'),
     request = require('request'),
     fs = require('fs-extra'),
     console = require('better-console'),
-    cheerio = require('cheerio');
+    cheerio = require('cheerio'),
+    extend = require('extend');
 
 var os = require('os'),
     path = require('path');
@@ -15,23 +16,81 @@ debug('cookie: ' + COOKIE_PATH);
 
 var uploader = require('./uploader.js');
 
+function downloadWidgets(task) {
+    return uploader.downloadWidgets(task).then(function(task) {
+        var widgets = JSON.parse(task.contain);
+        var fsPath = path.join(task.origPath, 'domain_widgets.json');
+
+        //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
+        fs.outputJsonSync(fsPath, widgets);
+        console.info('Save domain widgets successful');
+        return task;
+    });
+}
+
+function uploadWidgets(task) {
+    return uploader.downloadWidgets(task).then(function(task) {
+        var deferred = Q.defer();
+        var fsPath = path.join(task.origPath, 'domain_widgets.json');
+        var promise = [];
+        var widgetsIdMap = {};
+        var widgets = JSON.parse(task.contain);
+
+        widgets.forEach(function(widget, i) {
+            widgetsIdMap[widget.name] = widget.id;
+        });
+
+        fs.readJson(fsPath, function(err, widgets) {
+            err && console.error('Read file fail');
+
+            widgets.forEach(function(widget, i) {
+                var taskClone = extend({}, task);
+                if (!widgetsIdMap[widget.name]) {
+                    console.info('Domain widget %s not exist, create a new widget', widget.name);
+                    taskClone.widgetName = widget.name;
+                    taskClone.widgetDescription = widget.description;
+                    taskClone.code = widget.code;
+                    promise.push(uploader.createWidget(taskClone));
+                } else {
+                    taskClone.widgetId = widgetsIdMap[widget.name];
+                    taskClone.code = widget.code;
+                    promise.push(uploader.updateWidget(taskClone));
+                }
+            });
+
+            Q.all(promise).then(function(task) {
+                console.info('Restore domain widgets successful');
+                deferred.resolve(task);
+            }, function() {
+                console.info('Restore domain widgets failure');
+                deferred.reject();
+            });
+
+        });
+
+        return deferred.promise;
+    });
+}
+
 function downloadThemes(task) {
     return uploader.downloadTheme(task).then(function(task) {
         var deferred = Q.defer();
         var contain = JSON.parse(task.contain);
-        var fsPath = path.join(task.origPath, 'themes/');
+        var fsPath = path.join(task.origPath, 'themes');
         var promise = [];
         contain.forEach(function(theme, i) {
+            //replace empty space with '_'
             theme.name = theme.name.replace(/\s+/g, '_');
-            promise.push(saveFile(fsPath + theme.name + '_' + theme.id + '.json', JSON.stringify(theme, null, 4)));
-            promise.push(saveImage(fsPath + 'img_' + theme.name + '_' + theme.id + '/', theme));
+
+            promise.push(saveFile(path.join(fsPath, theme.name + '_' + theme.id + '.json'), JSON.stringify(theme, null, 4)));
+            promise.push(saveImage(path.join(fsPath, 'img_' + theme.name + '_' + theme.id), theme));
         });
 
         Q.all(promise).then(function() {
-            console.info('Save themes success');
+            console.info('Save themes successful');
             deferred.resolve(task);
         }, function() {
-            console.info('Save themes fail');
+            console.info('Save themes failure');
             deferred.reject();
         });
 
@@ -71,10 +130,10 @@ function uploadThemes(task) {
             });
 
             Q.all(promise).then(function() {
-                console.info('Upload themes success');
+                console.info('Restore themes successful');
                 deferred.resolve();
             }, function() {
-                console.error('Upload themes fail');
+                console.error('Restore themes failure');
                 deferred.reject();
             });
         });
@@ -98,7 +157,7 @@ function uploadTheme(task) {
             return uploader.createTheme(task).then(function(task) {
                 task.themeId = task.contain.id;
                 // for portal's bug(maybe..) after create new theme need use api first then uploadImage can
-                // be successful.
+                // be successfulful.
                 return uploader.uploadTheme(task);
             }).then(function(task) {
                 return uploadImage(task);
@@ -107,12 +166,12 @@ function uploadTheme(task) {
     }).then(function(task) {
         return uploader.uploadTheme(task);
     }, function() {
-        console.error('Upload theme fail');
+        console.error('Restore theme failure');
         deferred.reject();
     }).then(function(task) {
         deferred.resolve();
     }, function() {
-        console.error('Upload images fail');
+        console.error('Restore images failure');
         deferred.reject();
     });
     return deferred.promise;
@@ -134,7 +193,7 @@ function saveImage(path, theme) {
                 followRedirect: false
             };
             if (url) {
-                var writeStream = fs.createWriteStream(path + v + '.png', 'utf8');
+                var writeStream = fs.createWriteStream(path + '/' + v + '.png', 'utf8');
                 request(options).pipe(writeStream).on('finish', function() {
                     deferred.resolve();
                 });
@@ -158,6 +217,7 @@ function uploadImage(task) {
         return saveCookie(task.cookie);
     }).then(function() {
         uploader.getThemeList(task).then(function(data) {
+
             var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
             fs.writeFileSync('./test.html', html, 'utf8');
 
@@ -185,7 +245,6 @@ function uploadImage(task) {
                 };
 
                 if (chckFileExist(imgPath + '/browser_tab_icon.png')) {
-
                     form.browser_tab_icon = fs.createReadStream(imgPath + '/browser_tab_icon.png');
                 }
                 if (chckFileExist(imgPath + '/header_infoo.png')) {
@@ -228,10 +287,10 @@ function downloadDomainConfig(task) {
                 return task;
             });
         }).then(function(task) {
-            console.info('Save domain config success');
+            console.info('Save domain config successful');
             return task;
         }, function() {
-            console.error('Save domain config fail');
+            console.error('Save domain config failure');
         });;
 }
 
@@ -241,9 +300,9 @@ function uploadDomainConfig(task) {
             task.current = 'target';
             return uploader.uploadDomainConfig(task);
         }).then(function() {
-            console.info('Restore domain config success');
+            console.info('Restore domain config successful');
         }, function() {
-            console.error('Restore domain config fail');
+            console.error('Restore domain config failure');
         });
 }
 
@@ -257,8 +316,8 @@ function readFile(task, path) {
             task.fileContent = JSON.parse(fileContent);
             deferred.resolve(task);
         }, function(err) {
-            console.error('Read file fail');
-            deferred.reject('Failed to read file');
+            console.error('Read file failure');
+            deferred.reject('failureed to read file');
         });
 
     return deferred.promise;
@@ -275,7 +334,7 @@ function saveFile(fsPath, contains) {
                 debug("The file was saved!");
                 deferred.resolve();
             }).catch(function(err) {
-                deferred.reject('Failed to wirte file');
+                deferred.reject('failureed to wirte file');
             });
     });
 
@@ -287,9 +346,10 @@ function authenticate(task) {
 
     var useCookie = function(cookie) {
         debug(cookie);
-
+        cookieParesed = JSON.parse(cookie);
         task[task.current].cookie = cookie;
-        if (!cookie[task[task.current].domain]) {
+
+        if (!cookieParesed[task[task.current].domain]) {
             promptPwd('cookie not found ');
             return;
         }
@@ -314,8 +374,7 @@ function authenticate(task) {
     };
 
     loadCookie()
-        .then(useCookie)
-        .fail(promptPwd);
+        .then(useCookie, promptPwd);
 
     return deferred.promise;
 }
@@ -330,7 +389,7 @@ function promptPassword() {
 }
 
 function loadCookie() {
-    return Q.nfcall(fs.readFile, COOKIE_PATH, 'utf8').then(JSON.parse);
+    return Q.nfcall(fs.readFile, COOKIE_PATH, 'utf8');
 }
 
 function saveCookie(cookie) {
@@ -341,3 +400,5 @@ exports.downloadThemes = downloadThemes;
 exports.uploadThemes = uploadThemes;
 exports.downloadDomainConfig = downloadDomainConfig;
 exports.uploadDomainConfig = uploadDomainConfig;
+exports.downloadWidgets = downloadWidgets;
+exports.uploadWidgets = uploadWidgets;

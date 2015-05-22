@@ -13,12 +13,22 @@ var utility = require('./utility.js');
 program
     .option('-t, --theme [theme_id]', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name. [theme] not working now.')
     .option('-d, --domain-config', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name.')
-    .option('-w, --widget', 'work on widget(not working now)')
+    .option('-w, --domain-widgets', 'work on domain widget')
     .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
     // .option('-f, --force', 'Force update')
     .option('-p, --path <path>', 'Save file path, if omit, using ./');
 
 program.parse(process.argv);
+
+if (!program.args.length) {
+    console.error('please enter domain name');
+    return;
+}
+
+if (!/\./g.test(program.args[0])) {
+    console.error('please enter correct domain name');
+    return;
+}
 
 var task = {
     themeId: '',
@@ -47,12 +57,18 @@ if (program.user) {
     return;
 }
 
-if (program.theme) {
+if (program.theme || program.domainConfig || program.domainWidgets) {
+    if (program.theme) {
+        utility.downloadThemes(task);
+    }
+    if (program.domainConfig) {
+        utility.downloadDomainConfig(task);
+    }
+    if (program.domainWidgets) {
+        utility.downloadWidgets(task);
+    }
+} else {
     utility.downloadThemes(task);
-}else if (program.domainConfig) {
     utility.downloadDomainConfig(task);
-}else {
-    utility.downloadThemes(task);
-    utility.downloadDomainConfig(task);
+    utility.downloadWidgets(task);
 }
-
