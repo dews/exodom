@@ -13,7 +13,7 @@ Options:
     -V, --version              	output the version number
     -t, --theme [theme]      work on theme. If theme_id omit, deal all themes. If don't have default theme, create one. Please avoid same name. [theme] not working now.
     -d, --domain-config         work on domanin config, if you want upload, you need have globe admin.
-    -w, --widget                work on widget(not working now)
+    -w, --widget                work on widget
     -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two set are the same you can put only one set.
     -p, --path <path>           Saving path, if omit, using "./"
 
@@ -35,6 +35,8 @@ now you can try the command now
 if you see an error about node not existing
 you could be using Ubuntu or node is not properly installed
 
+
+###### the way easy to run
 you can add
 
     $ alias exodom='node ~/projects/domain_sync/exodom'
