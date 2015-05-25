@@ -25,26 +25,18 @@ node v0.10.x or iojs v2.0
 npm 1.x.x
 
     $ cd ~/projects
-	$ git clone git@i.exosite.com:calvinzheng/domain_sync.git
-	$ cd domain_sync
-	$ npm install
+	$ git clone git@i.exosite.com:calvinzheng/exo-dom.git
+	$ cd exo-dom
+	$ sudo npm install -g
+
+It would install at /usr/local/lib/node_modules/exo-dom
 
 now you can try the command now
 
-	$ node ./exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
+	$ exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
 
 if you see an error about node not existing
 you could be using Ubuntu or node is not properly installed
-
-###### the way easy to run
-you can add
-
-    $ alias exodom='node ~/projects/domain_sync/exodom'
-
-at ~/.bashrc then you can command at anywhere like this:
-
-    $ exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
-
 
 ### TODO
 

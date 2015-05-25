@@ -1,11 +1,14 @@
 {
-  "name": "ex-tool",
+  "name": "exo-dom",
   "version": "0.1.0",
-  "description": "Exosite service development tools",
+  "description": "Exosite service sync domain tools",
   "main": " ",
   "repository": "git@i.exosite.com:willytseng/exosite-service-tools.git",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+
+  },
+  "bin": {
+    "exodom": "exodom.js"
   },
   "keywords": [
     "exosite",
@@ -25,10 +28,10 @@
     "read": "^1.0.5",
     "request": "^2.36.0",
     "request-progress": "^0.3.1",
-    "cheerio": "~0.19.0"
+    "cheerio": "~0.19.0",
+    "debug": "^1.0.2"
   },
   "devDependencies": {
-    "request-debug": "^0.1.1",
-    "debug": "^1.0.2"
+    "request-debug": "^0.1.1"
   }
 }

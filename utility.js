@@ -185,7 +185,7 @@ function saveImage(path, theme) {
             return console.error(err)
         }
 
-        ['header_infoo', 'header_bkimage', 'dashboard_thumbnail', 'browser_tab_icon'].forEach(function(v, i) {
+        ['header_logo', 'header_bkimage', 'dashboard_thumbnail', 'browser_tab_icon'].forEach(function(v, i) {
             var url = theme.config[v];
             var options = {
                 url: url,
@@ -247,8 +247,8 @@ function uploadImage(task) {
                 if (chckFileExist(imgPath + '/browser_tab_icon.png')) {
                     form.browser_tab_icon = fs.createReadStream(imgPath + '/browser_tab_icon.png');
                 }
-                if (chckFileExist(imgPath + '/header_infoo.png')) {
-                    form.header_infoo = fs.createReadStream(imgPath + '/header_infoo.png');
+                if (chckFileExist(imgPath + '/header_logo.png')) {
+                    form.header_logo = fs.createReadStream(imgPath + '/header_logo.png');
                 }
                 if (chckFileExist(imgPath + '/header_bkimage.png')) {
                     form.header_bkimage = fs.createReadStream(imgPath + '/header_bkimage.png');
