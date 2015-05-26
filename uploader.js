@@ -118,7 +118,7 @@ function uploadDomainConfig(task) {
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
     var opt = {
         url: url,
-        data: JSON.stringify(task.fileContent),
+        json:task.fileContent,
         method: 'put'
     };
 

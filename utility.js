@@ -298,6 +298,15 @@ function uploadDomainConfig(task) {
     return readFile(task, task.origPath + 'domain_config.json')
         .then(function(task) {
             task.current = 'target';
+
+            // When target domain don't have pricing_planid1, restore would fail.
+            if (task.fileContent.config) {
+                task.fileContent.config.pricing_planid1 = '';
+                task.fileContent.config.pricing_planid2 = '';
+                task.fileContent.config.pricing_planid3 = '';
+                task.fileContent.config.pricing_planid4 = '';
+            }
+
             return uploader.uploadDomainConfig(task);
         }).then(function() {
             console.info('Restore domain config successful');
