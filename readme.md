@@ -3,19 +3,23 @@ Version: 0.1.0
 
 Usage:
 
-    exodom save <domain>
-    exodom restore <domain>
-    exodom sync <domain> <domain>
+    exodom save <domain> [options]
+    exodom restore <domain> [options]
+    exodom sync <source domain> <target domain> [options]
 
 Options:
 
     -h, --help                 	output usage information
     -V, --version              	output the version number
-    -t, --theme [theme]      work on theme. If theme_id omit, deal all themes. If don't have default theme, create one. Please avoid same name. [theme] not working now.
-    -d, --domain-config         work on domanin config, if you want upload, you need have globe admin.
+    -t, --theme [theme_id]      work on theme. If theme_id omit, deal all themes. If don't have default theme, create one. Please avoid themes have same name. [theme_id] not working now.
+    -d, --domain-config         work on domanin config, if you want to restore, you need to have global admin.
     -w, --widget                work on widget
-    -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two set are the same you can put only one set.
+    -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two sets are the same you can enter only one.
     -p, --path <path>           Saving path, if omit, using "./"
+
+when no options default take with:
+
+    -t, -d, -w
 
 ### INSTALL
 
@@ -24,7 +28,6 @@ Options:
 node v0.10.x or iojs v2.0
 npm 1.x.x
 
-    $ cd ~/projects
 	$ git clone git@i.exosite.com:calvinzheng/exo-dom.git
 	$ cd exo-dom
 	$ sudo npm install -g
