@@ -11,8 +11,8 @@ Options:
 
     -h, --help                 	output usage information
     -V, --version              	output the version number
-    -t, --theme [theme_id]      work on theme. If theme_id omit, deal all themes. If don't have default theme, create one. Please avoid themes have same name. [theme_id] not working now.
-    -d, --domain-config         work on domanin config, if you want to restore, you need to have global admin.
+    -t, --theme [theme_id]      work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.
+    -d, --domain-config         work on domain config, if you want to restore, you need to have global admin.
     -w, --widget                work on widget
     -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two sets are the same you can enter only one.
     -p, --path <path>           Saving path, if omit, using "./"
