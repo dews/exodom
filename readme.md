@@ -41,6 +41,9 @@ Now you can try the command now
 If you see an error about node not existing,
 you could be using Ubuntu or node is not properly installed
 
+If use iojs, you should modify exodom.js like this:
+    #!/usr/bin/env node -> #!/usr/bin/env iojs
+
 ### TODO
 1. Move project to github, use npm install
 2. Prompt password
