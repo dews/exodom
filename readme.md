@@ -17,7 +17,7 @@ Options:
     -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two sets are the same you can enter only one.
     -p, --path <path>           Saving path, if omit, using "./"
 
-when no options default take with:
+When no options default take with:
 
     -t, -d, -w
 
@@ -34,12 +34,15 @@ npm 1.x.x
 
 It would install at /usr/local/lib/node_modules/exo-dom
 
-now you can try the command now
+Now you can try the command now
 
 	$ exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
 
-if you see an error about node not existing
+If you see an error about node not existing,
 you could be using Ubuntu or node is not properly installed
 
 ### TODO
+1. Move project to github, use npm install
+2. Prompt password
+3. Sync client Model
 
