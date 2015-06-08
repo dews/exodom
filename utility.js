@@ -23,7 +23,7 @@ function downloadWidgets(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, widgets);
-        console.info('Save domain widgets successful');
+        console.info('Download domain widgets successful');
         return task;
     });
 }
@@ -59,10 +59,10 @@ function uploadWidgets(task) {
             });
 
             Q.all(promise).then(function(task) {
-                console.info('Restore domain widgets successful');
+                console.info('Upload domain widgets successful');
                 deferred.resolve(task);
             }, function() {
-                console.info('Restore domain widgets failure');
+                console.info('Upload domain widgets failure');
                 deferred.reject();
             });
 
@@ -87,10 +87,10 @@ function downloadThemes(task) {
         });
 
         Q.all(promise).then(function() {
-            console.info('Save themes successful');
+            console.info('Download themes successful');
             deferred.resolve(task);
         }, function() {
-            console.info('Save themes failure');
+            console.info('Download themes failure');
             deferred.reject();
         });
 
@@ -130,10 +130,10 @@ function uploadThemes(task) {
             });
 
             Q.all(promise).then(function() {
-                console.info('Restore themes successful');
+                console.info('Upload themes successful');
                 deferred.resolve();
             }, function() {
-                console.error('Restore themes failure');
+                console.error('Upload themes failure');
                 deferred.reject();
             });
         });
@@ -166,12 +166,12 @@ function uploadTheme(task) {
     }).then(function(task) {
         return uploader.uploadTheme(task);
     }, function() {
-        console.error('Restore theme failure');
+        console.error('Upload theme failure');
         deferred.reject();
     }).then(function(task) {
         deferred.resolve();
     }, function() {
-        console.error('Restore images failure');
+        console.error('Upload images failure');
         deferred.reject();
     });
     return deferred.promise;
@@ -287,10 +287,10 @@ function downloadDomainConfig(task) {
                 return task;
             });
         }).then(function(task) {
-            console.info('Save domain config successful');
+            console.info('Download domain config successful');
             return task;
         }, function() {
-            console.error('Save domain config failure');
+            console.error('Download domain config failure');
         });;
 }
 
@@ -299,7 +299,7 @@ function uploadDomainConfig(task) {
         .then(function(task) {
             task.current = 'target';
 
-            // When target domain don't have pricing_planid1, restore would fail.
+            // When target domain don't have pricing_planid1, upload would fail.
             if (task.fileContent.config) {
                 task.fileContent.config.pricing_planid1 = '';
                 task.fileContent.config.pricing_planid2 = '';
@@ -309,9 +309,9 @@ function uploadDomainConfig(task) {
 
             return uploader.uploadDomainConfig(task);
         }).then(function() {
-            console.info('Restore domain config successful');
+            console.info('Upload domain config successful');
         }, function() {
-            console.error('Restore domain config failure');
+            console.error('Upload domain config failure');
         });
 }
 

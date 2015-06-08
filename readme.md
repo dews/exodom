@@ -3,16 +3,16 @@ Version: 0.1.0
 
 Usage:
 
-    exodom save <domain> [options]
-    exodom restore <domain> [options]
-    exodom sync <source domain> <target domain> [options]
+    exodom download <domain> [options]
+    exodom upload <domain> [options]
+    exodom sync <from_domain> <to_domain> [options]
 
 Options:
 
     -h, --help                 	output usage information
     -V, --version              	output the version number
     -t, --theme [theme_id]      work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.
-    -d, --domain-config         work on domain config, if you want to restore, you need to have global admin.
+    -d, --domain-config         work on domain config, if you want to upload, you need to have global admin.
     -w, --widget                work on widget
     -u, --user <account:password,[account:password]>   When you choose sync, you need enter two sets of account. If two sets are the same you can enter only one.
     -p, --path <path>           Saving path, if omit, using "./"
@@ -41,8 +41,10 @@ Now you can try the command now
 If you see an error about node not existing,
 you could be using Ubuntu or node is not properly installed
 
-If use iojs, you should modify exodom.js like this:
+When use iojs, you should modify exodom.js like this:
     #!/usr/bin/env node -> #!/usr/bin/env iojs
+
+When work on signoff, you should check you can connect to signoff correctly. If not, you may need add 173.255.254.240 at host file or 10.137.1.100 at dns.
 
 ### TODO
 1. Move project to github, use npm install

@@ -11,11 +11,10 @@ var path = require('path');
 var utility = require('./utility.js');
 
 program
-    .option('-t, --theme [theme_id]', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name. [theme] not working now.')
-    .option('-d, --domain-config', 'work on domanin config, if you want upload, you need have globe admin.')
+    .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
+    .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
     .option('-w, --domain-widgets', 'work on widget')
     .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
-    // .option('-f, --force', 'Force update')
     .option('-p, --path <path>', 'Saving path, if omit, using ./');
 
 program.parse(process.argv);

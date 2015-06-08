@@ -7,14 +7,14 @@ var debug = require('debug')('main'),
     console = require('better-console');
 
 var path = require('path');
+
 var utility = require('./utility.js');
 
 program
-    .option('-t, --theme [theme_id]', 'work on theme. If theme_id omit, deal all themes. If don\'t have default theme, create one. Please avoid same name. [theme] not working now.')
-    .option('-d, --domain-config', 'work on domanin config, if you want upload, you need have globe admin.')
-    .option('-w, --domain-widgets', 'work on widget')
-    .option('-u, --user <account:password,[account:password]>', 'When you choose sync, you need enter two sets of account. If two set are the same you can put only one set.')
-    // .option('-f, --force', 'Force update')
+    .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
+    .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
+    .option('-w, --domain-widgets', 'work on domain widget')
+    .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
     .option('-p, --path <path>', 'Save file path, if omit, using ./');
 
 program.parse(process.argv);
@@ -33,7 +33,7 @@ var task = {
     themeId: '',
     origPath: path.normalize(program.path || './'),
     path: '',
-    target: {
+    source: {
         domain: program.args[0] || '',
         auth: {
             username: '',
@@ -42,16 +42,15 @@ var task = {
         cookie: ''
     },
     // Can switch between source and target.
-    current: 'target'
+    current: 'source'
 };
 
 task.path = task.origPath;
 
 if (program.user) {
     var ac = program.user.split(',');
-    var targetAc = ac[1];
-    task.target.auth.username = targetAc ? targetAc.split(':')[0] : ac[0].split(':')[0];
-    task.target.auth.password = targetAc ? targetAc.split(':')[1] : ac[0].split(':')[1];
+    task.source.auth.username = ac[0].split(':')[0];
+    task.source.auth.password = ac[0].split(':')[1];
 } else {
     console.error('please enter you user acconut, use -u');
     return;
@@ -59,17 +58,16 @@ if (program.user) {
 
 if (program.theme || program.domainConfig || program.domainWidgets) {
     if (program.theme) {
-        utility.uploadThemes(task);
+        utility.downloadThemes(task);
     }
     if (program.domainConfig) {
-        utility.uploadDomainConfig(task);
+        utility.downloadDomainConfig(task);
     }
     if (program.domainWidgets) {
-        utility.uploadWidgets(task);
+        utility.downloadWidgets(task);
     }
-
 } else {
-    utility.uploadThemes(task);
-    utility.uploadDomainConfig(task);
-    utility.uploadWidgets(task);
+    utility.downloadThemes(task);
+    utility.downloadDomainConfig(task);
+    utility.downloadWidgets(task);
 }
