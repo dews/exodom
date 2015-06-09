@@ -29,7 +29,7 @@ node v0.10.x or iojs v2.0
 installation instructions: https://nodejs.org/download/
 npm 1.x.x
 
-	$ git clone git@i.exosite.com:calvinzheng/exo-dom.git
+	$ git clone git@i.exosite.com:calvinzheng/domain_sync.git
 	$ cd exo-dom
 	$ sudo npm install -g
 
@@ -51,4 +51,4 @@ When work on signoff, you should check you can connect to signoff correctly. If 
 1. Move project to github, use npm install
 2. Prompt password
 3. Sync client Model
-
+4. Use domain as default path
