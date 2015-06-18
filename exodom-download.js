@@ -31,7 +31,7 @@ if (!/\./g.test(program.args[0])) {
 
 var task = {
     themeId: '',
-    origPath: path.normalize(program.path || './'),
+    origPath: path.normalize(program.path || program.args[0] || './'),
     path: '',
     source: {
         domain: program.args[0] || '',

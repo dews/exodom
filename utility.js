@@ -45,8 +45,9 @@ function uploadWidgets(task) {
 
             widgets.forEach(function(widget, i) {
                 var taskClone = extend({}, task);
+
                 if (!widgetsIdMap[widget.name]) {
-                    console.info('Domain widget %s not exist, create a new widget', widget.name);
+                    console.info('Domain widget: %s not exist, create a new widget', widget.name);
                     taskClone.widgetName = widget.name;
                     taskClone.widgetDescription = widget.description;
                     taskClone.code = widget.code;
@@ -180,7 +181,7 @@ function saveImage(path, theme) {
     //if dir not exist, create it.
     fs.ensureDir(path, function(err) {
         if (err) {
-            return console.error(err)
+            return console.error(err);
         }
 
         ['header_logo', 'header_bkimage', 'dashboard_thumbnail', 'browser_tab_icon'].forEach(function(v, i) {
@@ -338,7 +339,7 @@ function saveFile(fsPath, contains) {
 
         fsWriteFile(fsPath, contains)
             .then(function() {
-                debug("The file was saved!");
+                debug('The file was saved!');
                 deferred.resolve();
             }).catch(function(err) {
                 deferred.reject('failureed to wirte file');

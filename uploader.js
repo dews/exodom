@@ -22,7 +22,7 @@ function createWidget(task) {
         json: {
             name: task.widgetName,
             description: task.widgetDescription,
-            code: 'console.log("new widget")'
+            code: task.code
         },
         method: 'post'
     };
