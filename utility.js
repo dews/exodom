@@ -74,10 +74,10 @@ function uploadWidgets(task) {
 
 function downloadThemes(task) {
     return uploader.downloadTheme(task).then(function(task) {
-        var deferred = Q.defer();
         var contain = JSON.parse(task.contain);
         var fsPath = path.join(task.origPath, 'themes');
         var promise = [];
+
         contain.forEach(function(theme, i) {
             //replace empty space with '_'
             theme.name = theme.name.replace(/\s+/g, '_');
@@ -86,15 +86,13 @@ function downloadThemes(task) {
             promise.push(saveImage(path.join(fsPath, 'img_' + theme.name + '_' + theme.id), theme));
         });
 
-        Q.all(promise).then(function() {
+        return Q.all(promise).then(function() {
             console.info('Download themes successful');
-            deferred.resolve(task);
+            return task;
         }, function() {
             console.info('Download themes failure');
-            deferred.reject();
+            return task;
         });
-
-        return deferred.promise;
     });
 }
 
