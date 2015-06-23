@@ -91,7 +91,7 @@ function downloadThemes(task) {
             console.info('Download themes successful');
             return task;
         }, function() {
-            console.info('Download themes failure');
+            console.error('Download themes failure');
             return task;
         });
     });
@@ -385,7 +385,7 @@ function downloadDomainConfig(task) {
     return uploader.downloadDomainConfig(task)
         .then(function(task) {
             task.contain = JSON.stringify(JSON.parse(task.contain), null, 4);
-            return saveFile(task.origPath + 'domain_config.json', task.contain).then(function() {
+            return saveFile(task.origPath + '/domain_config.json', task.contain).then(function() {
                 return task;
             });
         }).then(function(task) {
@@ -397,7 +397,7 @@ function downloadDomainConfig(task) {
 }
 
 function uploadDomainConfig(task) {
-    return readFile(task, task.origPath + 'domain_config.json')
+    return readFile(task, task.origPath + '/domain_config.json')
         .then(function(task) {
             task.current = 'target';
 
