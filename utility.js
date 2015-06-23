@@ -173,6 +173,7 @@ function uploadTheme(task) {
         console.error('Upload images failure');
         deferred.reject();
     });
+
     return deferred.promise;
 }
 

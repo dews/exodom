@@ -156,7 +156,7 @@ function updateTheme(task) {
         method: 'post'
     };
 
-    return htmlCookie(opt, task, true);
+    return htmlCookie(opt, task);
 }
 
 // Not API, this is use portal interface and cookies.
@@ -167,7 +167,7 @@ function getClientModelPage(task) {
         method: 'get'
     };
 
-    return htmlCookie(opt, task, true);
+    return htmlCookie(opt, task);
 }
 
 function createClientModel(task) {
@@ -178,7 +178,7 @@ function createClientModel(task) {
         method: 'post'
     };
 
-    return htmlCookie(opt, task, true);
+    return htmlCookie(opt, task);
 }
 
 function getClientModelList(task) {
@@ -370,7 +370,6 @@ exports.checkSession = checkSession;
 exports.createWidget = createWidget;
 exports.downloadWidgets = downloadWidgets;
 exports.updateWidget = updateWidget;
-// exports.getToken = getToken;
 exports.getClientModelList = getClientModelList;
 exports.createClientModel = createClientModel;
 exports.getClientModelPage = getClientModelPage;
