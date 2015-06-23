@@ -12,6 +12,7 @@ var utility = require('./utility.js');
 
 program
     .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
+    .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain. If the theme not exist, create it. ')
     .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
     .option('-w, --domain-widgets', 'work on widget')
     .option('-u, --user <account:password,[account:password]>', 'If you choose sync you need enter two sets of account.')
@@ -67,7 +68,7 @@ if (program.user) {
     return;
 }
 
-if (program.theme || program.domainConfig || program.domainWidgets) {
+if (program.theme || program.domainConfig || program.domainWidgets || program.clientModels) {
     if (program.theme) {
         utility.downloadThemes(task).then(function(task) {
             task.current = 'target';
@@ -84,6 +85,12 @@ if (program.theme || program.domainConfig || program.domainWidgets) {
         utility.downloadWidgets(task).then(function(task) {
             task.current = 'target';
             utility.uploadWidgets(task);
+        });
+    }
+    if (program.clientModels) {
+        utility.downloadClientModels(task).then(function(task) {
+            task.current = 'target';
+            utility.uploadClientModels(task);
         });
     }
 } else {

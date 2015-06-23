@@ -1,5 +1,4 @@
 'use strict';
-
 // core
 var util = require('util'),
     path = require('path');
@@ -118,7 +117,7 @@ function uploadDomainConfig(task) {
     var url = 'https://' + task[task.current].domain + '/api/portals/v1/domains/_this';
     var opt = {
         url: url,
-        json:task.fileContent,
+        json: task.fileContent,
         method: 'put'
     };
 
@@ -148,7 +147,7 @@ function getTheme(task) {
     return htmlCookie(opt, task);
 }
 
-// Not by API, use portal interface, cookie
+// Not API, this is use portal interface and cookies.
 function updateTheme(task) {
     var url = 'https://' + task[task.current].domain + '/admin/theme';
     var opt = {
@@ -158,6 +157,38 @@ function updateTheme(task) {
     };
 
     return htmlCookie(opt, task, true);
+}
+
+// Not API, this is use portal interface and cookies.
+function getClientModelPage(task) {
+    var url = 'https://' + task[task.current].domain + '/admin/managemodels';
+    var opt = {
+        url: url,
+        method: 'get'
+    };
+
+    return htmlCookie(opt, task, true);
+}
+
+function createClientModel(task) {
+    var url = 'https://' + task[task.current].domain + '/admin/managemodels';
+    var opt = {
+        url: url,
+        formData: task.form,
+        method: 'post'
+    };
+
+    return htmlCookie(opt, task, true);
+}
+
+function getClientModelList(task) {
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/client-models/';
+    var opt = {
+        url: url,
+        method: 'get'
+    };
+
+    return html(opt, task);
 }
 
 function checkSession(task) {
@@ -200,7 +231,7 @@ function checkSession(task) {
 
         if (!matches) {
             debug('post id not found');
-            console.error('signin page unavailable')
+            console.error('signin page unavailable');
             deferred.reject('signin page unavailable');
             return;
         }
@@ -264,8 +295,6 @@ function html(opt, task) {
             deferred.reject(err);
             return;
         }
-
-        debug('status: ' + response.headers.status);
 
         if ((response.statusCode == 200 || response.statusCode == 201) && (body || opt.method === 'put')) {
             task.contain = body;
@@ -341,3 +370,7 @@ exports.checkSession = checkSession;
 exports.createWidget = createWidget;
 exports.downloadWidgets = downloadWidgets;
 exports.updateWidget = updateWidget;
+// exports.getToken = getToken;
+exports.getClientModelList = getClientModelList;
+exports.createClientModel = createClientModel;
+exports.getClientModelPage = getClientModelPage;

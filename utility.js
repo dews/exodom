@@ -23,7 +23,7 @@ function downloadWidgets(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, widgets);
-        console.info('Download domain widgets successful');
+        console.info('Download domain widgets successfully');
         return task;
     });
 }
@@ -60,7 +60,7 @@ function uploadWidgets(task) {
             });
 
             Q.all(promise).then(function(task) {
-                console.info('Upload domain widgets successful');
+                console.info('Upload domain widgets successfully');
                 deferred.resolve(task);
             }, function() {
                 console.info('Upload domain widgets failure');
@@ -129,7 +129,7 @@ function uploadThemes(task) {
             });
 
             Q.all(promise).then(function() {
-                console.info('Upload themes successful');
+                console.info('Upload themes successfully');
                 deferred.resolve();
             }, function() {
                 console.error('Upload themes failure');
@@ -216,7 +216,6 @@ function uploadImage(task) {
         return saveCookie(task.cookie);
     }).then(function() {
         uploader.getThemeList(task).then(function(data) {
-
             var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
             fs.writeFileSync('./test.html', html, 'utf8');
 
@@ -224,7 +223,7 @@ function uploadImage(task) {
             var postId = $('#admin .title').parents('form').find('input[name="postid"]').attr('value');
             var value = $('#admin .title').parents('form').find('td:contains("' + themeName + '")').parents('tr').find('td:nth-child(2) input').attr('name');
             var form = {
-                formname: "list_Theme",
+                formname: 'list_Theme',
                 postid: postId
             };
 
@@ -269,6 +268,110 @@ function uploadImage(task) {
     return deferred.promise;
 }
 
+function downloadClientModels(task) {
+    return getClientModelList(task).then(function(task) {
+        var clientModels = JSON.parse(task.contain);
+        var fsPath = path.join(task.origPath, 'client_models.json');
+
+        //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
+        fs.outputJsonSync(fsPath, clientModels);
+        console.info('Download client models successfully');
+        return task;
+    });
+}
+
+function uploadClientModels(task) {
+    var deferred = Q.defer();
+    var fsPath = path.join(task.origPath, 'client_models.json');
+
+    fs.readJson(fsPath, function(err, ClientModels) {
+        err && console.error('Read file fail');
+        var promises = [];
+
+        ClientModels.forEach(function(v, i) {
+            var taskClone = extend({
+                clientModels: {
+                    ClientModel_id: '',
+                    Name: v.id.split('/')[1],
+                    Friendly: v.name || '',
+                    // check user input rid
+                    CloneRID: task.CloneRID||v.cloneRID,
+                    Vendor: task[task.current].domain.split('.')[0],
+                    ViewID: '0000000000',
+                    ExampleSN: v.exampleSN,
+                    SharedSN: v.sharedSN,
+                    ConvertSN: v.convertSN,
+                    AlternateSN: v.alternateSN,
+                    NoteSetup: v.noteSetup,
+                    NoteName: v.noteName,
+                    NoteLocation: v.noteLocation,
+                    Description: v.description,
+                    ConfirmPage: v.confirmPage,
+                    CompanyName: v.companyName,
+                    ContactEmail: v.contactEmail,
+                    ':published': v[':published'].toString()
+                }
+            }, task);
+
+            promises.push(createClientModel(taskClone));
+        });
+
+        Q.all(promises).then(function(task) {
+            console.info('Upload client models successfully');
+            deferred.resolve(task);
+        }, function(reject) {
+            console.error(reject);
+            deferred.reject();
+        });
+    });
+
+    return deferred.promises;
+}
+
+function createClientModel(task) {
+    var deferred = Q.defer();
+
+    authenticate(task).then(function(task) {
+        return uploader.checkSession(task);
+    }).then(function(task) {
+        return saveCookie(task.cookie);
+    }).then(function() {
+
+        uploader.getClientModelPage(task).then(function(data) {
+            var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+            var $ = cheerio.load(html);
+
+            task.form = extend({
+                formname: $('form.computed').find('input[name="formname"]').attr('value'),
+                postid: $('form.computed').find('input[name="postid"]').attr('value')
+            }, task.clientModels);
+
+            uploader.createClientModel(task).then(function(task) {
+                var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
+                // fs.writeFileSync('./test.html', html, 'utf8');
+
+                // check create really successful
+                var $ = cheerio.load(html);
+
+                if ($('table>caption.title~tbody>tr>td:nth-child(6)').filter(function() {
+                        return $(this).text() == task.clientModels.Name;
+                    }).length) {
+                    deferred.resolve(task);
+                } else {
+                    deferred.reject('Create client model ' + task.clientModels.Name + ' fail.');
+                }
+            });
+        });
+
+    });
+
+    return deferred.promise;
+}
+
+function getClientModelList(task) {
+    return uploader.getClientModelList(task);
+}
+
 function chckFileExist(path) {
     try {
         fs.statSync(path);
@@ -286,11 +389,11 @@ function downloadDomainConfig(task) {
                 return task;
             });
         }).then(function(task) {
-            console.info('Download domain config successful');
+            console.info('Download domain config successfully');
             return task;
         }, function() {
             console.error('Download domain config failure');
-        });;
+        });
 }
 
 function uploadDomainConfig(task) {
@@ -308,7 +411,7 @@ function uploadDomainConfig(task) {
 
             return uploader.uploadDomainConfig(task);
         }).then(function() {
-            console.info('Upload domain config successful');
+            console.info('Upload domain config successfully');
         }, function() {
             console.error('Upload domain config failure');
         });
@@ -410,3 +513,5 @@ exports.downloadDomainConfig = downloadDomainConfig;
 exports.uploadDomainConfig = uploadDomainConfig;
 exports.downloadWidgets = downloadWidgets;
 exports.uploadWidgets = uploadWidgets;
+exports.downloadClientModels = downloadClientModels;
+exports.uploadClientModels = uploadClientModels;

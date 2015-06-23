@@ -11,6 +11,7 @@ var utility = require('./utility.js');
 
 program
     .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
+    .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain. If the theme not exist, create it. ')
     .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
     .option('-w, --domain-widgets', 'work on widgets')
     .option('-u, --user <account:password,[account:password]>', 'When you choose sync, you need enter two sets of account. If two sets are the same you can enter only one.')
@@ -56,7 +57,7 @@ if (program.user) {
     return;
 }
 
-if (program.theme || program.domainConfig || program.domainWidgets) {
+if (program.theme || program.domainConfig || program.domainWidgets || program.clientModels) {
     if (program.theme) {
         utility.uploadThemes(task);
     }
@@ -66,9 +67,15 @@ if (program.theme || program.domainConfig || program.domainWidgets) {
     if (program.domainWidgets) {
         utility.uploadWidgets(task);
     }
-
+    if (program.clientModels) {
+        if (typeof program.clientModels == 'string' && program.clientModels.match(/\w{40}/)) {
+            task.CloneRID = program.clientModels
+        }
+        utility.uploadClientModels(task);
+    }
 } else {
     utility.uploadThemes(task);
     utility.uploadDomainConfig(task);
     utility.uploadWidgets(task);
+    utility.uploadClientModels(task);
 }
