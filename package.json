@@ -4,9 +4,14 @@
   "description": "Exosite service sync domain tools",
   "main": " ",
   "repository": "git@i.exosite.com:willytseng/exosite-service-tools.git",
-  "scripts": {},
+  "scripts": {
+    "start": "sudo npm install -g"
+  },
   "bin": {
-    "exodom": "exodom.js"
+    "exodom": "exodom.js",
+    "exodom-sync": "exodom-sync.js",
+    "exodom-download": "exodom-download.js",
+    "exodom-upload": "exodom-upload.js"
   },
   "keywords": [
     "exosite",

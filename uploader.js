@@ -2,7 +2,7 @@
 // core
 var util = require('util'),
     path = require('path');
-
+var i = 0;
 // 3rd party
 var Q = require('q'),
     extend = require('extend'),
@@ -11,6 +11,9 @@ var Q = require('q'),
     console = require('better-console'),
     CLI = require('clui'),
     Spinner = CLI.Spinner;
+
+var spinning = new Spinner('Requesting');
+
 
 function createWidget(task) {
     debug('createWidget');
@@ -286,10 +289,13 @@ function html(opt, task) {
         strictSSL: false,
         followRedirect: false
     }, opt);
+    spinning.stop();
+    spinning.start();
 
     request(options, function(err, response, body) {
         debug(response);
         debug(body);
+        spinning.stop();
 
         if (err) {
             console.error('deferred ', err);
@@ -317,7 +323,8 @@ function html(opt, task) {
 // use cookie as auth
 function htmlCookie(opt, task) {
     debug('upload');
-    var spinning = new Spinner('Requesting');
+
+    spinning.stop();
     spinning.start();
 
     var _opt = {

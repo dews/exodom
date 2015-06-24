@@ -11,6 +11,7 @@ var path = require('path');
 var utility = require('./utility.js');
 
 program
+    .usage('<domain> <-u> [option]')
     .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
     .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain.')
     .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
@@ -21,7 +22,7 @@ program
 program.parse(process.argv);
 
 if (!program.args.length) {
-    console.error('please enter domain name');
+    program.outputHelp();
     return;
 }
 
