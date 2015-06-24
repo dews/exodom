@@ -8,7 +8,9 @@ var Q = require('q'),
     extend = require('extend'),
     request = require('request'),
     debug = require('debug')('widget-html'),
-    console = require('better-console');
+    console = require('better-console'),
+    CLI = require('clui'),
+    Spinner = CLI.Spinner;
 
 function createWidget(task) {
     debug('createWidget');
@@ -315,6 +317,9 @@ function html(opt, task) {
 // use cookie as auth
 function htmlCookie(opt, task) {
     debug('upload');
+    var spinning = new Spinner('Requesting');
+    spinning.start();
+
     var _opt = {
         headers: {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36'
@@ -331,6 +336,7 @@ function htmlCookie(opt, task) {
     request(options, function(err, response, body) {
         debug(response);
         debug(body);
+        spinning.stop();
 
         if (err) {
             console.error('err, body ', err, body);
