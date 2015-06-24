@@ -1,14 +1,17 @@
 {
-  "name": "exo-dom",
-  "version": "0.1.0",
+  "name": "exodom",
+  "version": "0.2.0",
   "description": "Exosite service sync domain tools",
   "main": " ",
   "repository": "git@i.exosite.com:willytseng/exosite-service-tools.git",
   "scripts": {
-
+    "start": "sudo npm install -g"
   },
   "bin": {
-    "exodom": "exodom.js"
+    "exodom": "exodom.js",
+    "exodom-sync": "exodom-sync.js",
+    "exodom-download": "exodom-download.js",
+    "exodom-upload": "exodom-upload.js"
   },
   "keywords": [
     "exosite",
@@ -18,14 +21,16 @@
   "license": "Apache-2.0",
   "dependencies": {
     "better-console": "^0.2.4",
+    "cheerio": "^0.19.0",
+    "clui": "^0.3.1",
     "commander": "^2.8.1",
+    "debug": "^1.0.2",
     "extend": "^1.2.1",
     "fs-extra": "^0.18.2",
-    "jsdom": "~4.5.2",
+    "jsdom": "^4.5.2",
+    "prompt": "^0.2.14",
     "q": "^1.0.1",
-    "request": "^2.36.0",
-    "cheerio": "~0.19.0",
-    "debug": "^1.0.2"
+    "request": "^2.36.0"
   },
   "devDependencies": {
     "request-debug": "^0.1.1"

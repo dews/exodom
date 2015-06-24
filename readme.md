@@ -1,11 +1,11 @@
 A tool to ease the pain in syncing domain
-Version: 0.1.1
+Version: 0.2.0
 
 Usage:
 
     exodom download <domain> [options]
     exodom upload <domain> [options]
-    exodom sync <from_domain> <to_domain> [options]
+    exodom sync <source domain> <target domain> [options]
 
 Options:
 
@@ -33,9 +33,9 @@ npm 1.x.x
 
 	$ git clone git@i.exosite.com:calvinzheng/domain_sync.git
 	$ cd exo-dom
-	$ sudo npm install -g
+	$ npm start
 
-It would install at /usr/local/lib/node_modules/exo-dom
+It would install at /usr/local/lib/node_modules/exodom
 
 Now you can try the command now
 
@@ -48,5 +48,4 @@ When work on signoff, you should check you can connect to signoff correctly. If 
 
 ### TODO
 1. Move project to github, use npm install
-2. Show help when no attribute.
-3. Add force update.
+2. Add force update.

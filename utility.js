@@ -16,6 +16,12 @@ debug('cookie: ' + COOKIE_PATH);
 
 var uploader = require('./uploader.js');
 
+// clear before info
+console.cinfo = function() {
+    process.stdout.write('\u001b[0G\u001b[2K');
+    console.info.apply(this, arguments);
+};
+
 function downloadWidgets(task) {
     return uploader.downloadWidgets(task).then(function(task) {
         var widgets = JSON.parse(task.contain);
@@ -23,7 +29,7 @@ function downloadWidgets(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, widgets);
-        console.info('Download domain widgets successfully');
+        console.cinfo('Download domain widgets successfully');
         return task;
     });
 }
@@ -47,7 +53,7 @@ function uploadWidgets(task) {
                 var taskClone = extend({}, task);
 
                 if (!widgetsIdMap[widget.name]) {
-                    console.info('Domain widget: %s not exist, create a new widget', widget.name);
+                    console.cinfo('Domain widget: %s not exist, create a new widget', widget.name);
                     taskClone.widgetName = widget.name;
                     taskClone.widgetDescription = widget.description;
                     taskClone.code = widget.code;
@@ -60,10 +66,10 @@ function uploadWidgets(task) {
             });
 
             Q.all(promise).then(function(task) {
-                console.info('Upload domain widgets successfully');
+                console.cinfo('Upload domain widgets successfully');
                 deferred.resolve(task);
             }, function() {
-                console.info('Upload domain widgets failure');
+                console.cinfo('Upload domain widgets failure');
                 deferred.reject();
             });
 
@@ -88,7 +94,7 @@ function downloadThemes(task) {
         });
 
         return Q.all(promise).then(function() {
-            console.info('Download themes successful');
+            console.cinfo('Download themes successful');
             return task;
         }, function() {
             console.error('Download themes failure');
@@ -129,7 +135,7 @@ function uploadThemes(task) {
             });
 
             Q.all(promise).then(function() {
-                console.info('Upload themes successfully');
+                console.cinfo('Upload themes successfully');
                 deferred.resolve();
             }, function() {
                 console.error('Upload themes failure');
@@ -152,7 +158,7 @@ function uploadTheme(task) {
             task.themeId = task.idMap[name].id;
             return uploadImage(task);
         } else {
-            console.info('Theme %s not exist, create new theme', name);
+            console.cinfo('Theme %s not exist, create new theme', name);
             return uploader.createTheme(task).then(function(task) {
                 task.themeId = task.contain.id;
                 // for portal's bug(maybe..) after create new theme need use api first then uploadImage can
@@ -276,7 +282,7 @@ function downloadClientModels(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, clientModels);
-        console.info('Download client models successfully');
+        console.cinfo('Download client models successfully');
         return task;
     });
 }
@@ -296,7 +302,7 @@ function uploadClientModels(task) {
                     Name: v.id.split('/')[1],
                     Friendly: v.name || '',
                     // check user input rid
-                    CloneRID: task.CloneRID||v.cloneRID,
+                    CloneRID: task.CloneRID || v.cloneRID,
                     Vendor: task[task.current].domain.split('.')[0],
                     ViewID: '0000000000',
                     ExampleSN: v.exampleSN,
@@ -318,7 +324,7 @@ function uploadClientModels(task) {
         });
 
         Q.all(promises).then(function(task) {
-            console.info('Upload client models successfully');
+            console.cinfo('Upload client models successfully');
             deferred.resolve(task);
         }, function(reject) {
             console.error(reject);
@@ -390,7 +396,7 @@ function downloadDomainConfig(task) {
                 return task;
             });
         }).then(function(task) {
-            console.info('Download domain config successfully');
+            console.cinfo('Download domain config successfully');
             return task;
         }, function() {
             console.error('Download domain config failure');
@@ -412,7 +418,7 @@ function uploadDomainConfig(task) {
 
             return uploader.uploadDomainConfig(task);
         }).then(function() {
-            console.info('Upload domain config successfully');
+            console.cinfo('Upload domain config successfully');
         }, function() {
             console.error('Upload domain config failure');
         });
