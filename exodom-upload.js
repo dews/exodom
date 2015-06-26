@@ -1,23 +1,25 @@
 #!/usr/bin/env node
 
 // 3rd party
-var debug = require('debug')('main'),
+var console = require('better-console'),
+    debug = require('debug')('main'),
+    Q = require('q'),
     program = require('commander'),
-    request = require('request'),
-    console = require('better-console'),
-    prompt = require('prompt');
+    prompt = require('prompt'),
+    request = require('request');
 
 var path = require('path');
 var utility = require('./utility.js');
 
 program
     .usage('exodom-upload <domain> <-u> [option]')
-    .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
-    .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain.')
-    .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
-    .option('-w, --domain-widgets', 'work on widgets')
-    .option('-u, --user <account:password>', 'If you ommit password, you can input when prompt.')
-    .option('-p, --path <path>', 'download file path, if omit, using ./domainName');
+    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
+    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
+    .option('-i, --interactive', 'Whow hint, let you decide update existing theme, client or not. When this option is omit, skip update existing theme, client')
+    .option('-p, --path <path>', 'Download file path, if omit, using ./domainName')
+    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
+    .option('-u, --user <account:password>', 'If you the ommit password, you can input when prompt')
+    .option('-w, --domain-widgets', 'Work on widgets');
 
 program.parse(process.argv);
 
@@ -43,6 +45,7 @@ var task = {
         },
         cookie: ''
     },
+    interactive: program.interactive,
     // Can switch between source and target.
     current: 'target'
 };
@@ -73,26 +76,37 @@ if (program.user) {
 }
 
 function distribute() {
+    var promises = [];
+
     if (program.theme || program.domainConfig || program.domainWidgets || program.clientModels) {
         if (program.theme) {
-            utility.uploadThemes(task);
+            promises.push(utility.uploadThemes);
         }
         if (program.domainConfig) {
-            utility.uploadDomainConfig(task);
+            promises.push(utility.uploadDomainConfig);
         }
         if (program.domainWidgets) {
-            utility.uploadWidgets(task);
+            promises.push(utility.uploadWidgets);
         }
         if (program.clientModels) {
             if (typeof program.clientModels == 'string' && program.clientModels.match(/\w{40}/)) {
                 task.CloneRID = program.clientModels;
             }
-            utility.uploadClientModels(task);
+            promises.push(utility.uploadClientModels);
         }
+
+        promises.reduce(function(soFar, f) {
+
+            return soFar.then(f);
+        }, Q(task));
+
     } else {
-        utility.uploadThemes(task);
-        utility.uploadDomainConfig(task);
-        utility.uploadWidgets(task);
-        utility.uploadClientModels(task);
+        utility.uploadThemes(task).then(function() {
+            return utility.uploadDomainConfig(task);
+        }).then(function() {
+            return utility.uploadWidgets(task);
+        }).then(function() {
+            return utility.uploadClientModels(task);
+        });
     }
 }

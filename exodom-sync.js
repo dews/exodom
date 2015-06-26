@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 
 // 3rd party
-var debug = require('debug')('main'),
+var console = require('better-console'),
+    debug = require('debug')('main'),
+    Q = require('q'),
     program = require('commander'),
+    prompt = require('prompt'),
     request = require('request'),
-    console = require('better-console'),
-    extend = require('extend'),
-    prompt = require('prompt');
+    extend = require('extend');
 
 var path = require('path');
 var utility = require('./utility.js');
 
 program
     .usage('<source domain> [target domain] <-u> [option]')
-    .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
-    .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain.')
-    .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
-    .option('-w, --domain-widgets', 'work on widget')
-    .option('-u, --user <account:password,[account:password]>', 'First is for source domain, second is for target domain. If you ommit password, you can input when prompt.')
-    .option('-p, --path <path>', 'Saving path, if omit, using ./domainName');
+    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
+    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
+    .option('-i, --interactive', 'Show hint, let you decide update existing theme, client or not. When this option is omit, skip update existing theme, client')
+    .option('-p, --path <path>', 'Saving path, if omit, using ./domainName')
+    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
+    .option('-u, --user <account:password,[account:password]>', 'First is for source domain, second is for target domain. If you ommit the password, you can input when prompt')
+    .option('-w, --domain-widgets', 'work on widget');
 
 program.parse(process.argv);
 
@@ -28,12 +30,12 @@ if (!program.args.length) {
 }
 
 if (program.args.length !== 2) {
-    console.error('please enter target domain and source domain');
+    console.error('Please enter target domain and source domain');
     return;
 }
 
 if (!/\./g.test(program.args[0]) || !/\./g.test(program.args[1])) {
-    console.error('please enter correct domain name');
+    console.error('Please enter correct domain name');
     return;
 }
 
@@ -57,6 +59,7 @@ var task = {
         },
         cookie: ''
     },
+    interactive: program.interactive,
     // Can switch between source and target.
     current: 'source'
 };
@@ -106,59 +109,96 @@ if (program.user) {
     }
 
 } else {
-    console.error('please enter you user acconut, use -u');
+    console.error('Please enter you user acconut, use -u');
     return;
 }
 
 function distribute() {
+    var promises = [];
+
     if (program.theme || program.domainConfig || program.domainWidgets || program.clientModels) {
         if (program.theme) {
-            utility.downloadThemes(task).then(function(task) {
-                task.current = 'target';
-                utility.uploadThemes(task);
+            promises.push(function(task) {
+                task.current = 'source';
+
+                return utility.downloadThemes(task).then(function(task) {
+                    task.current = 'target';
+
+                    return utility.uploadThemes(task);
+                });
+
             });
         }
         if (program.domainConfig) {
-            utility.downloadDomainConfig(task).then(function(task) {
-                task.current = 'target';
-                utility.uploadDomainConfig(task);
+            promises.push(function(task) {
+                task.current = 'source';
+
+                return utility.downloadDomainConfig(task).then(function(task) {
+                    task.current = 'target';
+
+                    return utility.uploadDomainConfig(task);
+                });
             });
         }
         if (program.domainWidgets) {
-            utility.downloadWidgets(task).then(function(task) {
-                task.current = 'target';
-                utility.uploadWidgets(task);
+            promises.push(function(task) {
+                task.current = 'source';
+
+                return utility.downloadWidgets(task).then(function(task) {
+                    task.current = 'target';
+
+                    return utility.uploadWidgets(task);
+                });
             });
         }
         if (program.clientModels) {
-            utility.downloadClientModels(task).then(function(task) {
-                task.current = 'target';
-                utility.uploadClientModels(task);
+            promises.push(function(task) {
+                task.current = 'source';
+
+                return utility.downloadClientModels(task).then(function(task) {
+                    task.current = 'target';
+
+                    return utility.uploadClientModels(task);
+                });
             });
         }
+
+        promises.reduce(function(soFar, f) {
+
+            return soFar.then(f);
+        }, Q(task));
+
     } else {
         var taskClone = extend({}, task);
+
         utility.downloadThemes(taskClone).then(function(task) {
             task.current = 'target';
-            utility.uploadThemes(task);
-        });
 
-        taskClone = extend({}, task);
-        utility.downloadDomainConfig(taskClone).then(function(task) {
-            task.current = 'target';
-            utility.uploadDomainConfig(task);
-        });
+            return utility.uploadThemes(task);
+        }).then(function() {
+            taskClone = extend({}, task);
 
-        taskClone = extend({}, task);
-        utility.downloadWidgets(taskClone).then(function(task) {
+            return utility.downloadDomainConfig(taskClone);
+        }).then(function(task) {
             task.current = 'target';
-            utility.uploadWidgets(task);
-        });
 
-        taskClone = extend({}, task);
-        utility.downloadClientModels(taskClone).then(function(task) {
+            return utility.uploadDomainConfig(task);
+        }).then(function() {
+            taskClone = extend({}, task);
+
+            return utility.downloadWidgets(taskClone);
+        }).then(function(task) {
             task.current = 'target';
-            utility.uploadClientModels(task);
+
+            return utility.uploadWidgets(task);
+        }).then(function() {
+            taskClone = extend({}, task);
+
+            return utility.downloadClientModels(taskClone);
+        }).then(function(task) {
+            task.current = 'target';
+
+            return utility.uploadClientModels(task);
         });
     }
 }

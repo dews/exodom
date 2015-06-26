@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 
 // 3rd party
-var debug = require('debug')('main'),
+var console = require('better-console'),
+    debug = require('debug')('main'),
+    Q = require('q'),
     program = require('commander'),
-    request = require('request'),
-    console = require('better-console'),
-    prompt = require('prompt');
+    prompt = require('prompt'),
+    request = require('request');
 
 var path = require('path');
 var utility = require('./utility.js');
 
 program
     .usage('<domain> <-u> [option]')
-    .option('-t, --theme [theme_id]', 'work on theme. If [theme_id] omit, deal all themes. If the theme not exist, create it. Please avoid themes have same name. [theme_id] not working now.')
-    .option('-c, --client-models [deivce_rid]', 'work on client-models. If [deivce_rid] omit, use same as source domain.')
-    .option('-d, --domain-config', 'work on domain config, if you want to upload, you need to have global admin.')
-    .option('-w, --domain-widgets', 'work on domain widget')
-    .option('-u, --user <account:password>', 'If you ommit password, you can input when prompt.')
-    .option('-p, --path <path>', 'Save file path, if omit, using ./domainName');
+    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
+    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
+    .option('-p, --path <path>', 'Save file path, if omit, using ./domainName')
+    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
+    .option('-u, --user <account:password>', 'If you ommit password, you can input when prompt')
+    .option('-w, --domain-widgets', 'work on domain widget');
 
 program.parse(process.argv);
 
@@ -43,6 +44,7 @@ var task = {
         },
         cookie: ''
     },
+    interactive: program.interactive,
     // Can switch between source and target.
     current: 'source'
 };
@@ -73,23 +75,33 @@ if (program.user) {
 }
 
 function distribute() {
+    var promises = [];
+
     if (program.theme || program.domainConfig || program.domainWidgets || program.clientModels) {
         if (program.theme) {
-            utility.downloadThemes(task);
+            promises.push(utility.downloadThemes);
         }
         if (program.domainConfig) {
-            utility.downloadDomainConfig(task);
+            promises.push(utility.downloadDomainConfig);
         }
         if (program.domainWidgets) {
-            utility.downloadWidgets(task);
+            promises.push(utility.downloadWidgets);
         }
         if (program.clientModels) {
-            utility.downloadClientModels(task);
+            promises.push(utility.downloadClientModels);
         }
+
+        promises.reduce(function(soFar, f) {
+            return soFar.then(f);
+        }, Q(task));
     } else {
-        utility.downloadThemes(task);
-        utility.downloadDomainConfig(task);
-        utility.downloadWidgets(task);
-        utility.downloadClientModels(task);
+        utility.downloadThemes(task).then(function() {
+            return utility.downloadDomainConfig(task);
+        }).then(function() {
+            return utility.downloadWidgets(task);
+        }).then(function() {
+            return utility.downloadClientModels(task);
+        });
+
     }
 }

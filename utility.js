@@ -5,40 +5,35 @@ var Q = require('q'),
     fs = require('fs-extra'),
     console = require('better-console'),
     cheerio = require('cheerio'),
-    extend = require('extend');
+    extend = require('extend'),
+    prompt = require('prompt');
 
 var os = require('os'),
     path = require('path');
 
 // constants
-var COOKIE_PATH = os.tmpdir() + path.sep + '.wiget-uploader-cookie';
+var COOKIE_PATH = os.tmpdir() + path.sep + '.wiget-api-cookie';
 debug('cookie: ' + COOKIE_PATH);
 
-var uploader = require('./uploader.js');
-
-// clear before info
-console.cinfo = function() {
-    process.stdout.write('\u001b[0G\u001b[2K');
-    console.info.apply(this, arguments);
-};
+var api = require('./api.js');
 
 function downloadWidgets(task) {
-    return uploader.downloadWidgets(task).then(function(task) {
+    return api.downloadWidgets(task).then(function(task) {
         var widgets = JSON.parse(task.contain);
         var fsPath = path.join(task.origPath, 'domain_widgets.json');
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, widgets);
-        console.cinfo('Download domain widgets successfully');
+        console.info('Download domain widgets successfully');
         return task;
     });
 }
 
 function uploadWidgets(task) {
-    return uploader.downloadWidgets(task).then(function(task) {
-        var deferred = Q.defer();
+    return api.downloadWidgets(task).then(function(task) {
         var fsPath = path.join(task.origPath, 'domain_widgets.json');
         var promise = [];
+        var deferred = Q.defer();
         var widgetsIdMap = {};
         var widgets = JSON.parse(task.contain);
 
@@ -47,32 +42,63 @@ function uploadWidgets(task) {
         });
 
         fs.readJson(fsPath, function(err, widgets) {
-            err && console.error('Read file fail');
+            if (err) {
+                console.error('Read file failure');
+                deferred.reject(task);
+                return task;
+            }
 
-            widgets.forEach(function(widget, i) {
-                var taskClone = extend({}, task);
+            widgets.reduce(function(soFar, widget, i) {
+                return soFar.then(function() {
+                    var deferred = Q.defer();
 
-                if (!widgetsIdMap[widget.name]) {
-                    console.cinfo('Domain widget: %s not exist, create a new widget', widget.name);
-                    taskClone.widgetName = widget.name;
-                    taskClone.widgetDescription = widget.description;
-                    taskClone.code = widget.code;
-                    promise.push(uploader.createWidget(taskClone));
-                } else {
-                    taskClone.widgetId = widgetsIdMap[widget.name];
-                    taskClone.code = widget.code;
-                    promise.push(uploader.updateWidget(taskClone));
-                }
-            });
+                    if (!widgetsIdMap[widget.name]) {
+                        console.info('Domain widget %s not exist, create a new widget', widget.name);
+                        task.widgetName = widget.name;
+                        task.widgetDescription = widget.description;
+                        task.code = widget.code;
+                        return api.createWidget(task);
+                    }
 
-            Q.all(promise).then(function(task) {
-                console.cinfo('Upload domain widgets successfully');
+                    if (!task.interactive) {
+                        console.info('Domain widget %s exist, skip update', widget.name);
+                        return Q();
+                    }
+
+                    prompt.start();
+
+                    prompt.get([{
+                        name: 'exist',
+                        message: 'Overwirte the exist ' + widget.name + ' widget?',
+                        validator: /y[es]*|n[o]?/,
+                        warning: 'Must respond yes or no',
+                        default: 'yes'
+                    }], function(err, result) {
+                        if (result.exist === 'yes' || result.exist === 'y') {
+                            var taskClone = extend({
+                                code: widget.code,
+                                widgetId: widgetsIdMap[widget.name]
+                            }, task);
+
+                            api.updateWidget(taskClone).then(function() {
+                                deferred.resolve();
+                            });
+                        } else {
+                            console.info('Skip update widget: %s', widget.name);
+                            deferred.resolve();
+                        }
+                    });
+
+                    return deferred.promise;
+
+                });
+            }, Q('')).then(function(task) {
+                console.info('Upload domain widgets successfully');
                 deferred.resolve(task);
             }, function() {
-                console.cinfo('Upload domain widgets failure');
-                deferred.reject();
+                console.error('Upload domain widgets failure');
+                deferred.reject(task);
             });
-
         });
 
         return deferred.promise;
@@ -80,7 +106,7 @@ function uploadWidgets(task) {
 }
 
 function downloadThemes(task) {
-    return uploader.downloadTheme(task).then(function(task) {
+    return api.downloadTheme(task).then(function(task) {
         var contain = JSON.parse(task.contain);
         var fsPath = path.join(task.origPath, 'themes');
         var promise = [];
@@ -94,7 +120,7 @@ function downloadThemes(task) {
         });
 
         return Q.all(promise).then(function() {
-            console.cinfo('Download themes successful');
+            console.info('Download themes successful');
             return task;
         }, function() {
             console.error('Download themes failure');
@@ -104,12 +130,16 @@ function downloadThemes(task) {
 }
 
 function uploadThemes(task) {
-    var deferred = Q.defer();
-    var promise = [];
     var fsPath = path.join(task.origPath, 'themes/');
-    var files = fs.readdirSync(fsPath);
+    var files;
     var filesName = [];
-    var fileMap = {};
+
+    try {
+        files = fs.readdirSync(fsPath);
+    } catch (e) {
+        console.error('e ', e);
+        return Q(task);
+    }
 
     files.forEach(function(v, i) {
         if (v.match(/.json/)) {
@@ -117,7 +147,7 @@ function uploadThemes(task) {
         }
     });
 
-    uploader.downloadTheme(task)
+    return api.downloadTheme(task)
         .then(function(task) {
             var targetThemes = JSON.parse(task.contain);
             task.idMap = {};
@@ -129,58 +159,77 @@ function uploadThemes(task) {
                 };
             });
 
-            filesName.forEach(function(fileName, i) {
-                task.path = path.join(task.origPath, 'themes', fileName);
-                promise.push(uploadTheme(task));
-            });
-
-            Q.all(promise).then(function() {
-                console.cinfo('Upload themes successfully');
-                deferred.resolve();
-            }, function() {
-                console.error('Upload themes failure');
-                deferred.reject();
-            });
+            return filesName.reduce(function(soFar, fileName, i) {
+                return soFar.then(function() {
+                    task.path = path.join(task.origPath, 'themes', fileName);
+                    return uploadTheme(task);
+                });
+            }, Q(''));
+        }).then(function(task) {
+            console.info('Upload themes successfully');
+            return task;
+        }, function(task) {
+            console.info('Upload themes failure');
+            return task;
         });
-
-    return deferred.promise;
 }
 
 function uploadTheme(task) {
     // Avoid when do muti job at same time, effect each other.
     var cloneTask = JSON.parse(JSON.stringify(task));
-    var deferred = Q.defer();
 
-    readFile(cloneTask).then(function(task) {
+    return readFile(cloneTask).then(function(task) {
         var name = task.fileContent.name;
 
         if (task.idMap[name]) {
-            task.themeId = task.idMap[name].id;
-            return uploadImage(task);
+            if (task.interactive) {
+                var deferred = Q.defer();
+
+                prompt.get([{
+                    name: 'exist',
+                    message: 'Overwirte the exist ' + name + ' theme?',
+                    validator: /y[es]*|n[o]?/,
+                    warning: 'Must respond yes or no',
+                    default: 'yes'
+                }], function(err, result) {
+                    if (result.exist === 'yes' || result.exist === 'y') {
+                        task.themeId = task.idMap[name].id;
+                        deferred.resolve(task);
+                    } else {
+                        console.info('Skip update theme: %s', name);
+                        deferred.reject(task);
+                    }
+                });
+
+                return Q(deferred.promise).then(function(task) {
+                    return uploadImage(task).then(function(task) {
+                        return api.uploadTheme(task);
+                    });
+                }, function(task) {
+                    // skip update theme
+                    return task;
+                });
+            } else {
+                console.info('Theme %s exist, skip update', name);
+                return task;
+            }
         } else {
-            console.cinfo('Theme %s not exist, create new theme', name);
-            return uploader.createTheme(task).then(function(task) {
+            console.info('Theme %s not exist, creat new theme', name);
+            return api.createTheme(task).then(function(task) {
                 task.themeId = task.contain.id;
                 // for portal's bug(maybe..) after create new theme need use api first then uploadImage can
-                // be successfulful.
-                return uploader.uploadTheme(task);
+                // be successful.
+                return api.uploadTheme(task);
             }).then(function(task) {
                 return uploadImage(task);
             });
         }
     }).then(function(task) {
-        return uploader.uploadTheme(task);
+        return task;
     }, function() {
-        console.error('Upload theme failure');
-        deferred.reject();
-    }).then(function(task) {
-        deferred.resolve();
-    }, function() {
-        console.error('Upload images failure');
-        deferred.reject();
+        console.error('Upload theme  %s failure', task.fileContent.name);
+        return task;
     });
-
-    return deferred.promise;
 }
 
 function saveImage(path, theme) {
@@ -198,6 +247,7 @@ function saveImage(path, theme) {
                 strictSSL: false,
                 followRedirect: false
             };
+
             if (url) {
                 var writeStream = fs.createWriteStream(path + '/' + v + '.png', 'utf8');
                 request(options).pipe(writeStream).on('finish', function() {
@@ -218,11 +268,11 @@ function uploadImage(task) {
     var themeName = fileName.replace(/\_\d{10}/g, '');
 
     authenticate(task).then(function(task) {
-        return uploader.checkSession(task);
+        return api.checkSession(task);
     }).then(function(task) {
         return saveCookie(task.cookie);
     }).then(function() {
-        uploader.getThemeList(task).then(function(data) {
+        api.getThemeList(task).then(function(data) {
             var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
             fs.writeFileSync('./test.html', html, 'utf8');
 
@@ -237,7 +287,7 @@ function uploadImage(task) {
             form[value] = '';
             task.form = form;
 
-            uploader.getTheme(task).then(function(data) {
+            api.getTheme(task).then(function(data) {
                 var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
                 var $ = cheerio.load(html);
                 var postId = $('form.computed').find('input[name="postid"]').attr('value');
@@ -264,7 +314,7 @@ function uploadImage(task) {
 
                 task.form = form;
 
-                uploader.updateTheme(task).then(function(task) {
+                api.updateTheme(task).then(function(task) {
                     var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
                     // for debug.
                     deferred.resolve(task);
@@ -282,7 +332,7 @@ function downloadClientModels(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, clientModels);
-        console.cinfo('Download client models successfully');
+        console.info('Download client models successfully');
         return task;
     });
 }
@@ -291,60 +341,105 @@ function uploadClientModels(task) {
     var deferred = Q.defer();
     var fsPath = path.join(task.origPath, 'client_models.json');
 
-    fs.readJson(fsPath, function(err, ClientModels) {
-        err && console.error('Read file fail');
-        var promises = [];
+    fs.readJson(fsPath, function(err, clientModels) {
+        if (err) {
+            console.error('Read file fail');
+            deferred.reject(task);
+        }
 
-        ClientModels.forEach(function(v, i) {
-            var taskClone = extend({
-                clientModels: {
-                    ClientModel_id: '',
-                    Name: v.id.split('/')[1],
-                    Friendly: v.name || '',
-                    // check user input rid
-                    CloneRID: task.CloneRID || v.cloneRID,
-                    Vendor: task[task.current].domain.split('.')[0],
-                    ViewID: '0000000000',
-                    ExampleSN: v.exampleSN,
-                    SharedSN: v.sharedSN,
-                    ConvertSN: v.convertSN,
-                    AlternateSN: v.alternateSN,
-                    NoteSetup: v.noteSetup,
-                    NoteName: v.noteName,
-                    NoteLocation: v.noteLocation,
-                    Description: v.description,
-                    ConfirmPage: v.confirmPage,
-                    CompanyName: v.companyName,
-                    ContactEmail: v.contactEmail,
-                    ':published': v[':published'].toString()
-                }
-            }, task);
+        getClientModelList(task).then(function(task) {
+            var existClientModels = JSON.parse(task.contain);
+            var waitConfirm = [];
 
-            promises.push(createClientModel(taskClone));
-        });
+            return clientModels.reduce(function(soFar, clientModel) {
+                return soFar.then(function() {
+                    var deferred = Q.defer();
+                    var simplifyId = clientModel.id.split('/')[1];
+                    var taskClone = extend({
+                        clientModels: {
+                            ClientModel_id: '',
+                            Name: simplifyId,
+                            Friendly: clientModel.name || '',
+                            // check user input rid
+                            CloneRID: task.CloneRID || clientModel.cloneRID,
+                            Vendor: task[task.current].domain.split('.')[0],
+                            ViewID: '0000000000',
+                            ExampleSN: clientModel.exampleSN,
+                            SharedSN: clientModel.sharedSN,
+                            ConvertSN: clientModel.convertSN,
+                            AlternateSN: clientModel.alternateSN,
+                            NoteSetup: clientModel.noteSetup,
+                            NoteName: clientModel.noteName,
+                            NoteLocation: clientModel.noteLocation,
+                            Description: clientModel.description,
+                            ConfirmPage: clientModel.confirmPage,
+                            CompanyName: clientModel.companyName,
+                            ContactEmail: clientModel.contactEmail,
+                            ':published': clientModel[':published'].toString()
+                        }
+                    }, task);
 
-        Q.all(promises).then(function(task) {
-            console.cinfo('Upload client models successfully');
+                    if (!existClientModels.some(function(existClientModel) {
+                            return simplifyId === existClientModel.id.split('/')[1];
+                        })) {
+                        console.info('Client model %s not exist, creat new client model', simplifyId);
+                        return createClientModel(taskClone);
+                    }
+
+                    if (!task.interactive) {
+                        console.info('Client model %s exist, skip update', simplifyId);
+                        return '';
+                    }
+
+                    prompt.start();
+
+                    prompt.get([{
+                        name: 'exist',
+                        message: 'Overwirte the exist ' + simplifyId + ' client model?',
+                        validator: /y[es]*|n[o]?/,
+                        warning: 'Must respond yes or no',
+                        default: 'yes'
+                    }], function(err, result) {
+                        if (result.exist === 'yes' || result.exist === 'y') {
+                            var taskClone = extend({
+                                request: clientModel
+                            }, task);
+
+                            updateClientModel(taskClone).then(function(task) {
+                                deferred.resolve();
+                            });
+                        } else {
+                            console.info('Skip update client model: %s', simplifyId);
+                            deferred.resolve();
+                        }
+                    });
+
+                    return deferred.promise;
+                });
+            }, Q([]));
+
+        }).then(function(task) {
+            console.info('Upload client models successfully');
             deferred.resolve(task);
         }, function(reject) {
-            console.error(reject);
-            deferred.reject();
+            console.error('Upload client models failure');
+            deferred.reject(task);
         });
     });
 
-    return deferred.promises;
+    return deferred.promise;
 }
 
 function createClientModel(task) {
     var deferred = Q.defer();
 
     authenticate(task).then(function(task) {
-        return uploader.checkSession(task);
+        return api.checkSession(task);
     }).then(function(task) {
         return saveCookie(task.cookie);
     }).then(function() {
 
-        uploader.getClientModelPage(task).then(function(data) {
+        api.getClientModelPage(task).then(function(data) {
             var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
             var $ = cheerio.load(html);
 
@@ -353,9 +448,9 @@ function createClientModel(task) {
                 postid: $('form.computed').find('input[name="postid"]').attr('value')
             }, task.clientModels);
 
-            uploader.createClientModel(task).then(function(task) {
+            api.createClientModel(task).then(function(task) {
                 var html = data.contain.split(/<body\s*>/g)[1].split(/<\/body\s*>/g)[0].replace(/(\r\n|\n|\r)/g, '');
-                // fs.writeFileSync('./test.html', html, 'utf8');
+                fs.writeFileSync('./test.html', html, 'utf8');
 
                 // check create really successful
                 var $ = cheerio.load(html);
@@ -365,7 +460,15 @@ function createClientModel(task) {
                     }).length) {
                     deferred.resolve(task);
                 } else {
-                    deferred.reject('Create client model ' + task.clientModels.Name + ' fail.');
+
+                    console.error('Create client model ' + task.clientModels.Name + ' fail.');
+                    var notice = $('#admin .notice p').text();
+
+                    if (notice) {
+                        console.error('Error shows at portal notice area:', notice);
+                    }
+
+                    deferred.reject(task);
                 }
             });
         });
@@ -375,8 +478,12 @@ function createClientModel(task) {
     return deferred.promise;
 }
 
+function updateClientModel(task) {
+    return api.updateClientModel(task);
+}
+
 function getClientModelList(task) {
-    return uploader.getClientModelList(task);
+    return api.getClientModelList(task);
 }
 
 function chckFileExist(path) {
@@ -389,17 +496,18 @@ function chckFileExist(path) {
 }
 
 function downloadDomainConfig(task) {
-    return uploader.downloadDomainConfig(task)
+    return api.downloadDomainConfig(task)
         .then(function(task) {
             task.contain = JSON.stringify(JSON.parse(task.contain), null, 4);
             return saveFile(task.origPath + '/domain_config.json', task.contain).then(function() {
                 return task;
             });
         }).then(function(task) {
-            console.cinfo('Download domain config successfully');
+            console.info('Download domain config successfully');
             return task;
         }, function() {
             console.error('Download domain config failure');
+            return task;
         });
 }
 
@@ -409,6 +517,7 @@ function uploadDomainConfig(task) {
             task.current = 'target';
 
             // When target domain don't have pricing_planid1, upload would fail.
+            // so reset it, prevent trouble.
             if (task.fileContent.config) {
                 task.fileContent.config.pricing_planid1 = '';
                 task.fileContent.config.pricing_planid2 = '';
@@ -416,11 +525,13 @@ function uploadDomainConfig(task) {
                 task.fileContent.config.pricing_planid4 = '';
             }
 
-            return uploader.uploadDomainConfig(task);
+            return api.uploadDomainConfig(task);
         }).then(function() {
-            console.cinfo('Upload domain config successfully');
+            console.info('Upload domain config successfully');
+            return task;
         }, function() {
             console.error('Upload domain config failure');
+            return task;
         });
 }
 
@@ -516,9 +627,12 @@ function saveCookie(cookie) {
 
 exports.downloadThemes = downloadThemes;
 exports.uploadThemes = uploadThemes;
+
 exports.downloadDomainConfig = downloadDomainConfig;
 exports.uploadDomainConfig = uploadDomainConfig;
+
 exports.downloadWidgets = downloadWidgets;
 exports.uploadWidgets = uploadWidgets;
+
 exports.downloadClientModels = downloadClientModels;
 exports.uploadClientModels = uploadClientModels;

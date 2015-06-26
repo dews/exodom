@@ -11,9 +11,7 @@ var Q = require('q'),
     console = require('better-console'),
     CLI = require('clui'),
     Spinner = CLI.Spinner;
-
-var spinning = new Spinner('Requesting');
-
+var spinner = new Spinner('requesting');
 
 function createWidget(task) {
     debug('createWidget');
@@ -196,6 +194,19 @@ function getClientModelList(task) {
     return html(opt, task);
 }
 
+function updateClientModel(task) {
+    delete task.request.domainID;
+    delete task.request.vendor;
+    var url = 'https://' + task[task.current].domain + '/api/portals/v1/client-models/' + task[task.current].domain.split('.')[0] + '/' + task.request.id.split('/')[1];
+    var opt = {
+        url: url,
+        json: task.request,
+        method: 'put'
+    };
+
+    return html(opt, task);
+}
+
 function checkSession(task) {
     var deferred = Q.defer();
     var signinPage = 'https://' + task[task.current].domain + '/login';
@@ -283,19 +294,20 @@ function checkSession(task) {
 function html(opt, task) {
     debug('upload');
 
+    spinner.start();
+
     var deferred = Q.defer();
     var options = extend({
         auth: task[task.current].auth,
         strictSSL: false,
         followRedirect: false
     }, opt);
-    spinning.stop();
-    spinning.start();
 
     request(options, function(err, response, body) {
         debug(response);
         debug(body);
-        spinning.stop();
+        
+        spinner.stop();
 
         if (err) {
             console.error('deferred ', err);
@@ -324,8 +336,7 @@ function html(opt, task) {
 function htmlCookie(opt, task) {
     debug('upload');
 
-    spinning.stop();
-    spinning.start();
+    spinner.start();
 
     var _opt = {
         headers: {
@@ -343,7 +354,8 @@ function htmlCookie(opt, task) {
     request(options, function(err, response, body) {
         debug(response);
         debug(body);
-        spinning.stop();
+
+        spinner.stop();
 
         if (err) {
             console.error('err, body ', err, body);
@@ -363,26 +375,30 @@ function htmlCookie(opt, task) {
             console.error('You need globe permission.');
         }
 
-        console.error('Request\'s response body: ', body);
+        // console.error('Request\'s response body: ', body);
         deferred.reject(opt.method + ' failed');
     });
 
     return deferred.promise;
 }
 
+exports.checkSession = checkSession;
 
 exports.createTheme = createTheme;
 exports.downloadTheme = downloadTheme;
-exports.getThemeList = getThemeList;
 exports.getTheme = getTheme;
+exports.getThemeList = getThemeList;
 exports.updateTheme = updateTheme;
 exports.uploadTheme = uploadTheme;
+
 exports.downloadDomainConfig = downloadDomainConfig;
 exports.uploadDomainConfig = uploadDomainConfig;
-exports.checkSession = checkSession;
+
 exports.createWidget = createWidget;
 exports.downloadWidgets = downloadWidgets;
 exports.updateWidget = updateWidget;
-exports.getClientModelList = getClientModelList;
+
 exports.createClientModel = createClientModel;
+exports.getClientModelList = getClientModelList;
 exports.getClientModelPage = getClientModelPage;
+exports.updateClientModel = updateClientModel;
