@@ -1,47 +1,75 @@
-A tool to ease the pain in developing portal widget
+# Exodom
+#### A tool to ease the pain of syncing data across domains
 
-Version: *0.1.0-beta*
+### Usage:
 
-Usage: 
+    exodom download <domain> [options]
+    exodom upload <domain> [options]
+    exodom sync <source domain> <target domain> [options]
 
-	exoserv <host> <widgetId> <file ...> [options]
+### Options:
 
-Options:
+    -c, --client-models [device_rid]    Sync client-models. If [device_rid] is 
+                                        omitted, use the same [device_rid] as the 
+                                        source domain's.
 
-    -h, --help                 	output usage information
-    -V, --version              	output the version number
-    -u, --username <username>  	username for authentication
-    -w, --watch                	watch for changes
-    -S, --style <stylefile>		style to be injected [experimental]
+    -d, --domain-config                 Sync domain config. Requires global 
+                                        admin access to upload.
 
-### INSTALL
+    -h, --help                          Print this page.
 
-###### prerequisite
+    -i, --interactive                   Show hints. Prompt users to overwrite 
+                                        existing themes, client models, domain 
+                                        widgets. If this option is not used,
+                                        existing objects will be skipped.
 
-node v0.10.x
-npm 1.x.x
+    -p, --path <path>                   Save objects at the selected path, 
+                                        the default path is "./domain name".
 
-	$ git clone git@i.exosite.com:willytseng/exosite-service-tools.git  
-	$ cd exosite-service-tools  
-	$ npm install  
-	$ sudo ln -s $(pwd)/exoserv.js /usr/local/bin/exoserv  
+    -t, --theme                         Sync themes. Domains should not have 
+                                        themes with the same name.
 
-now you can try the command now  
+    -u, --user <user:pwd,[user:pwd]>    Passwords can be omitted, users wll be 
+                                        prompted to input them. When syncing,
+                                        two sets of credentials are required.
 
-	$ exoserv
+    -u, --user <user:pwd>               Users may enter one only set of 
+                                        credentials if it is able to access both
+                                        source and target domains.
 
-if you see an error about node not existing
-you could be using Ubuntu or node is not properly installed
+    -V, --version                       Output the version number.
 
-### TODO
+    -w, --widget                        Sync domain widgets.
 
-refactor - **top priority**
+If no options are included, the default options are:
 
-livereload - livereload browser when watching the file
-uglify - use uglify to minized the code before upload
-browserify - apply require.js to generate widget
-closure - compress widget by google closure
+    -t, -c, -d, -w
 
-functionality - other functionality
+### INSTALLATION
 
-config - a task like config file
+##### prerequisites
+<div></div>
+- node version ≥ **v0.10.x** - follow the installation instructions [here](https://nodejs.org/download/ "nodejs.org")
+- npm  version ≥ **1.x.x**
+    
+Run the following command to install exodom:
+
+    $ sudo npm install -g exodom
+
+Example of syncing data from source.signoff.domain to target.signoff.domain:
+
+    $ exodom sync source.signoff.domain target.signoff.domain -d -t -p ./ -u user@exosite.com:userpassword,admin@exosite.com:adminpassword
+
+If you are working on a signoff domain, make sure your host file includes your 
+domain. 
+
+Note:   **52.8.31.110** is used for signoff domains.
+
+### TODOS
+1. Add force update
+
+##### widget
+1. Sync widget published option
+
+##### client model
+1. Sync picture

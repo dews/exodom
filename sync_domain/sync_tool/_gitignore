@@ -1,8 +1,0 @@
-# node modules
-node_modules
-
-# logs
-logs
-*.logs
-test
-.DS_Store
