@@ -12,13 +12,13 @@ var path = require('path');
 var utility = require('./utility.js');
 
 program
-    .usage('<domain> <-u> [option]')
-    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
-    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
-    .option('-p, --path <path>', 'Save file path, if omit, using ./domainName')
-    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
-    .option('-u, --user <account:password>', 'If you ommit password, you can input when prompt')
-    .option('-w, --domain-widgets', 'work on domain widget');
+    .usage('<domain> -u [options]')
+    .option('-c, --client-models [device_rid]', 'Download client-models.')
+    .option('-d, --domain-config', 'Download domain config.')
+    .option('-p, --path <path>', 'A new folder named with the domain_url will be created under the current working directory (./domain_url), files will be downloaded to this folder. If a path was specified, the new folder will be created under the specified path (/yourpath/domain_url).')
+    .option('-t, --theme [theme_id]', 'Download themes. Domains should not have themes with the same name.')
+    .option('-u, --user <account:password>', 'Passwords can be omitted, users wll be prompted to input them.')
+    .option('-w, --domain-widgets', 'Download domain widgets');
 
 program.parse(process.argv);
 
@@ -28,14 +28,15 @@ if (!program.args.length) {
 }
 
 if (!/\./g.test(program.args[0])) {
-    console.error('please enter correct domain name');
+    console.error('Please enter a correct domain name');
     return;
 }
 
+var path = program.path ? path.join(program.path, program.args[0]) : path.normalize(program.args[0]);
 var task = {
     themeId: '',
-    origPath: path.normalize(program.path || program.args[0] || './'),
-    path: '',
+    origPath: path,
+    path: path,
     source: {
         domain: program.args[0] || '',
         auth: {
@@ -45,11 +46,9 @@ var task = {
         cookie: ''
     },
     interactive: program.interactive,
-    // Can switch between source and target.
+    // help switch between source and target.
     current: 'source'
 };
-
-task.path = task.origPath;
 
 if (program.user) {
     var ac = program.user.split(',');
@@ -57,20 +56,24 @@ if (program.user) {
 
     if (ac[0].split(':')[1]) {
         task.source.auth.password = ac[0].split(':')[1];
-        distribute();
+        utility.domainAlive(task).then(function() {
+            distribute();
+        });
     } else {
         prompt.start();
         prompt.get([{
-            name: 'password',
+            name: 'password: ',
             required: true,
             hidden: true
         }], function(err, result) {
             task.source.auth.password = result.password;
-            distribute();
+            utility.domainAlive(task).then(function() {
+                distribute();
+            });
         });
     }
 } else {
-    console.error('please enter you user acconut, use -u');
+    console.error('Please include your user account with -u');
     return;
 }
 

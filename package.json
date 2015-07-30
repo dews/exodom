@@ -1,7 +1,7 @@
 {
   "name": "exodom",
-  "version": "0.3.0",
-  "description": "Exosite service sync domain tools",
+  "version": "0.3.1",
+  "description": "A tool to ease the pain of syncing data across domains",
   "main": "",
   "repository": "git@github.com:dews/exodom.git",
   "scripts": "",
@@ -12,7 +12,6 @@
     "exodom-upload": "exodom-upload.js"
   },
   "keywords": [
-    "exodom",
     "exosite",
     "domain",
     "sync"

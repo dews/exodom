@@ -3,6 +3,7 @@
 var util = require('util'),
     path = require('path');
 var i = 0;
+
 // 3rd party
 var Q = require('q'),
     extend = require('extend'),
@@ -12,6 +13,32 @@ var Q = require('q'),
     CLI = require('clui'),
     Spinner = CLI.Spinner;
 var spinner = new Spinner('requesting');
+
+function domainAlive(domainUrl) {
+    var options = {
+        url: 'https://' + domainUrl,
+        method: 'get',
+        strictSSL: false
+    };
+
+    return Q.Promise(function(resolve, reject, notify) {
+        request(options, function(err, response, body) {
+            if (err) {
+                if (err.code === 'ENOTFOUND') {
+                    console.error('Can\'t connect the [' + err.hostname + '] domain.');
+                } else {
+                    console.error(err);
+                }
+                reject();
+            } else if (body === '403 Forbidden') {
+                console.error('Server respond: ' + body);
+                reject();
+            } else {
+                resolve();
+            }
+        });
+    });
+}
 
 function createWidget(task) {
     debug('createWidget');
@@ -124,7 +151,9 @@ function uploadDomainConfig(task) {
         method: 'put'
     };
 
-    return html(opt, task);
+    return html(opt, task).fail(function() {
+        console.error('You need globe permission.');
+    });
 }
 
 // Not by API, use portal interface, cookie
@@ -264,7 +293,7 @@ function checkSession(task) {
         opt.headers.Refer = 'https://' + task[task.current].domain + '/login';
 
         request.post(signinRequest, opt, function(err, response, body) {
-            debug('formpost result:' + response.statusCode);
+            debug('form post result:' + response.statusCode);
 
             body = body.trim();
 
@@ -306,7 +335,7 @@ function html(opt, task) {
     request(options, function(err, response, body) {
         debug(response);
         debug(body);
-        
+
         spinner.stop();
 
         if (err) {
@@ -321,11 +350,11 @@ function html(opt, task) {
             deferred.resolve(task);
             debug(opt.method + 'success');
             return;
-        } else if (response.statusCode == 500) {
-            console.error('You need globe permission.');
+        } else if (response.statusCode == 303) {
+            console.error('Invalid Email or Password.');
         }
 
-        console.error('body', body);
+
         deferred.reject(opt.method + ' failed');
     });
 
@@ -371,11 +400,11 @@ function htmlCookie(opt, task) {
             deferred.resolve(task);
             debug(opt.method + 'success');
             return;
-        } else if (response.statusCode == 500) {
+        } else if (response.statusCode == 100 || response.statusCode == 500) {
             console.error('You need globe permission.');
         }
 
-        // console.error('Request\'s response body: ', body);
+        console.error('Server respond: ', body);
         deferred.reject(opt.method + ' failed');
     });
 
@@ -383,6 +412,7 @@ function htmlCookie(opt, task) {
 }
 
 exports.checkSession = checkSession;
+exports.domainAlive = domainAlive;
 
 exports.createTheme = createTheme;
 exports.downloadTheme = downloadTheme;

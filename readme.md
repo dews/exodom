@@ -1,55 +1,75 @@
-A tool to ease the pain in syncing domain
-Version: 0.3.0
+# Exodom
+#### A tool to ease the pain of syncing data across domains
 
-Usage:
+### Usage:
 
     exodom download <domain> [options]
     exodom upload <domain> [options]
     exodom sync <source domain> <target domain> [options]
 
-Options:
+### Options:
 
-    -c, --client-models [device_rid]   Work on client-models. If [device_rid] omit, use same the device_rid as source domain
-    -d, --domain-config         Work on domain config. When doing upload, you need to have global admin.(means,download don't have)
-    -h, --help                  Print this help screen
-    -i, --interactive           Show hint, let you decide update existing theme, client model, domain widget or not. When this option is omit, skip update existing object. 
-    -p, --path <path>           Saving file at the path, defalut is "./domain name"
-    -t, --theme                 Work on theme. A domain should not have themes with same name.
-    -u, --user <account:password,[account:password]>  The password can be ommit, then inut at next phase. When you choose sync, you need enter two sets of account. If password of source and target are the same you can choose enter only one.
-    -V, --version               Output the version number
-    -w, --widget                Work on domain widgets
+    -c, --client-models [device_rid]    Sync client-models. If [device_rid] is 
+                                        omitted, use the same [device_rid] as the 
+                                        source domain's.
 
-When no options, default options is:
+    -d, --domain-config                 Sync domain config. Requires global 
+                                        admin access to upload.
+
+    -h, --help                          Print this page.
+
+    -i, --interactive                   Show hints. Prompt users to overwrite 
+                                        existing themes, client models, domain 
+                                        widgets. If this option is not used,
+                                        existing objects will be skipped.
+
+    -p, --path <path>                   Save objects at the selected path, 
+                                        the default path is "./domain name".
+
+    -t, --theme                         Sync themes. Domains should not have 
+                                        themes with the same name.
+
+    -u, --user <user:pwd,[user:pwd]>    Passwords can be omitted, users wll be 
+                                        prompted to input them. When syncing,
+                                        two sets of credentials are required.
+
+    -u, --user <user:pwd>               Users may enter one only set of 
+                                        credentials if it is able to access both
+                                        source and target domains.
+
+    -V, --version                       Output the version number.
+
+    -w, --widget                        Sync domain widgets.
+
+If no options are included, the default options are:
 
     -t, -c, -d, -w
 
-### INSTALL
+### INSTALLATION
 
-###### prerequisite
+##### prerequisites
+<div></div>
+- node version ≥ **v0.10.x** - follow the installation instructions [here](https://nodejs.org/download/ "nodejs.org")
+- npm  version ≥ **1.x.x**
+    
+Run the following command to install exodom:
 
-node >v0.10.x
-installation instructions: https://nodejs.org/download/
-npm 1.x.x
+    $ sudo npm install -g exodom
 
-	$ git clone git@i.exosite.com:calvinzheng/domain_sync.git
-	$ cd exo-dom
-	$ npm start
+Example of syncing data from source.signoff.domain to target.signoff.domain:
 
-It would install at /usr/local/lib/node_modules/exodom
+    $ exodom sync source.signoff.domain target.signoff.domain -d -t -p ./ -u user@exosite.com:userpassword,admin@exosite.com:adminpassword
 
-Now you can try the command like this:
+If you are working on a signoff domain, make sure your host file includes your 
+domain. 
 
-	$ exodom sync calvin.signoff.portalsapp basco.signoff.portalsapp -d  -p ./ -u calvinzheng@exosite.com:pw,calvinzheng@exosite.com:pw
+Note:   **52.8.31.110** is used for signoff domains.
 
-If you see an error about node not existing, you could be using Ubuntu or node is not properly installed
+### TODOS
+1. Add force update
 
-When work on signoff, you should check you can connect to signoff correctly. If not, you may need add 173.255.254.240 at host file or 10.137.1.100 at dns.
-
-### TODO
-1. Add force update.
-
-###### widget
+##### widget
 1. Sync widget published option
 
-###### client model
+##### client model
 1. Sync picture

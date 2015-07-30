@@ -8,6 +8,9 @@ var Q = require('q'),
     extend = require('extend'),
     prompt = require('prompt');
 
+prompt.message = '';
+prompt.delimiter = '';
+
 var os = require('os'),
     path = require('path');
 
@@ -17,6 +20,22 @@ debug('cookie: ' + COOKIE_PATH);
 
 var api = require('./api.js');
 
+function domainAlive(task) {
+    var promises = [];
+    if (task.source) {
+        promises.push(api.domainAlive(task.source.domain).fail(function(res) {
+            process.exit();
+        }));
+    }
+
+    if (task.target) {
+        promises.push(api.domainAlive(task.target.domain).fail(function(res) {
+            process.exit();
+        }));
+    }
+    return Q.all(promises);
+}
+
 function downloadWidgets(task) {
     return api.downloadWidgets(task).then(function(task) {
         var widgets = JSON.parse(task.contain);
@@ -24,7 +43,7 @@ function downloadWidgets(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, widgets);
-        console.info('Download domain widgets successfully');
+        console.info('Successfully downloaded domain widgets');
         return task;
     });
 }
@@ -43,17 +62,17 @@ function uploadWidgets(task) {
 
         fs.readJson(fsPath, function(err, widgets) {
             if (err) {
-                console.error('Read file failure');
+                console.error('Failed to read domain_widgets.json');
                 deferred.reject(task);
                 return task;
             }
 
             widgets.reduce(function(soFar, widget, i) {
                 return soFar.then(function() {
-                    var deferred = Q.defer();
+                    var deferred2 = Q.defer();
 
                     if (!widgetsIdMap[widget.name]) {
-                        console.info('Domain widget %s not exist, create a new widget', widget.name);
+                        console.info('Domain widget %s does not exist, creating new widget...', widget.name);
                         task.widgetName = widget.name;
                         task.widgetDescription = widget.description;
                         task.code = widget.code;
@@ -61,7 +80,7 @@ function uploadWidgets(task) {
                     }
 
                     if (!task.interactive) {
-                        console.info('Domain widget %s exist, skip update', widget.name);
+                        console.info('Domain widget %s exists, skipped update', widget.name);
                         return Q();
                     }
 
@@ -69,10 +88,10 @@ function uploadWidgets(task) {
 
                     prompt.get([{
                         name: 'exist',
-                        message: 'Overwirte the exist ' + widget.name + ' widget?',
+                        message: 'Overwrite the existing ' + '[' + widget.name + ']' + ' widget?',
                         validator: /y[es]*|n[o]?/,
-                        warning: 'Must respond yes or no',
-                        default: 'yes'
+                        warning: 'Must respond with yes or no',
+                        default: 'no'
                     }], function(err, result) {
                         if (result.exist === 'yes' || result.exist === 'y') {
                             var taskClone = extend({
@@ -81,27 +100,30 @@ function uploadWidgets(task) {
                             }, task);
 
                             api.updateWidget(taskClone).then(function() {
-                                deferred.resolve();
+                                deferred2.resolve();
                             });
                         } else {
-                            console.info('Skip update widget: %s', widget.name);
-                            deferred.resolve();
+                            console.info('Skipped widget: [%s]', widget.name);
+                            deferred2.resolve();
                         }
                     });
 
-                    return deferred.promise;
-
+                    return deferred2.promise;
                 });
             }, Q('')).then(function(task) {
-                console.info('Upload domain widgets successfully');
+                console.info('Successfully uploaded domain widgets');
                 deferred.resolve(task);
             }, function() {
-                console.error('Upload domain widgets failure');
+                console.error('Failed to upload domain widgets');
                 deferred.reject(task);
             });
         });
 
         return deferred.promise;
+    }).then(function(task) {
+        return task;
+    }, function(task) {
+        return task;
     });
 }
 
@@ -120,10 +142,10 @@ function downloadThemes(task) {
         });
 
         return Q.all(promise).then(function() {
-            console.info('Download themes successful');
+            console.info('Successfully downloaded themes');
             return task;
         }, function() {
-            console.error('Download themes failure');
+            console.error('Failed to download themes');
             return task;
         });
     });
@@ -137,7 +159,8 @@ function uploadThemes(task) {
     try {
         files = fs.readdirSync(fsPath);
     } catch (e) {
-        console.error('e ', e);
+        console.error('Failed to read themes file');
+        debug(e);
         return Q(task);
     }
 
@@ -166,10 +189,10 @@ function uploadThemes(task) {
                 });
             }, Q(''));
         }).then(function(task) {
-            console.info('Upload themes successfully');
+            console.info('Successfully uploaded themes');
             return task;
         }, function(task) {
-            console.info('Upload themes failure');
+            console.info('Failed to upload themes');
             return task;
         });
 }
@@ -187,16 +210,16 @@ function uploadTheme(task) {
 
                 prompt.get([{
                     name: 'exist',
-                    message: 'Overwirte the exist ' + name + ' theme?',
+                    message: 'Overwrite the existing ' + '[' + name + ']' + ' theme?',
                     validator: /y[es]*|n[o]?/,
-                    warning: 'Must respond yes or no',
-                    default: 'yes'
+                    warning: 'Must respond with yes or no',
+                    default: 'no'
                 }], function(err, result) {
                     if (result.exist === 'yes' || result.exist === 'y') {
                         task.themeId = task.idMap[name].id;
                         deferred.resolve(task);
                     } else {
-                        console.info('Skip update theme: %s', name);
+                        console.info('Skipped theme [%s]', name);
                         deferred.reject(task);
                     }
                 });
@@ -210,11 +233,11 @@ function uploadTheme(task) {
                     return task;
                 });
             } else {
-                console.info('Theme %s exist, skip update', name);
+                console.info('Theme [%s] exists, skipped update', name);
                 return task;
             }
         } else {
-            console.info('Theme %s not exist, creat new theme', name);
+            console.info('Theme [%s] does not exist, creating new theme...', name);
             return api.createTheme(task).then(function(task) {
                 task.themeId = task.contain.id;
                 // for portal's bug(maybe..) after create new theme need use api first then uploadImage can
@@ -227,7 +250,7 @@ function uploadTheme(task) {
     }).then(function(task) {
         return task;
     }, function() {
-        console.error('Upload theme  %s failure', task.fileContent.name);
+        console.error('Failed to upload theme [%s]', task.fileContent.name);
         return task;
     });
 }
@@ -332,7 +355,7 @@ function downloadClientModels(task) {
 
         //about outputJsonSync https://github.com/jprichardson/node-fs-extra#outputfilefile-data-callback
         fs.outputJsonSync(fsPath, clientModels);
-        console.info('Download client models successfully');
+        console.info('Successfully downloaded client models');
         return task;
     });
 }
@@ -343,7 +366,7 @@ function uploadClientModels(task) {
 
     fs.readJson(fsPath, function(err, clientModels) {
         if (err) {
-            console.error('Read file fail');
+            console.error('Failed to read client_models.json');
             deferred.reject(task);
         }
 
@@ -382,12 +405,12 @@ function uploadClientModels(task) {
                     if (!existClientModels.some(function(existClientModel) {
                             return simplifyId === existClientModel.id.split('/')[1];
                         })) {
-                        console.info('Client model %s not exist, creat new client model', simplifyId);
+                        console.info('Client model [%s] does not exist, creating new client model...', simplifyId);
                         return createClientModel(taskClone);
                     }
 
                     if (!task.interactive) {
-                        console.info('Client model %s exist, skip update', simplifyId);
+                        console.info('Client model [%s] exists, skipped update', simplifyId);
                         return '';
                     }
 
@@ -395,10 +418,10 @@ function uploadClientModels(task) {
 
                     prompt.get([{
                         name: 'exist',
-                        message: 'Overwirte the exist ' + simplifyId + ' client model?',
+                        message: 'Overwrite the existing ' + '[' + simplifyId + ']' + ' client model?',
                         validator: /y[es]*|n[o]?/,
-                        warning: 'Must respond yes or no',
-                        default: 'yes'
+                        warning: 'Must respond with yes or no',
+                        default: 'no'
                     }], function(err, result) {
                         if (result.exist === 'yes' || result.exist === 'y') {
                             var taskClone = extend({
@@ -409,7 +432,7 @@ function uploadClientModels(task) {
                                 deferred.resolve();
                             });
                         } else {
-                            console.info('Skip update client model: %s', simplifyId);
+                            console.info('Skipped client model [%s]', simplifyId);
                             deferred.resolve();
                         }
                     });
@@ -419,10 +442,10 @@ function uploadClientModels(task) {
             }, Q([]));
 
         }).then(function(task) {
-            console.info('Upload client models successfully');
+            console.info('Successfully uploaded client models');
             deferred.resolve(task);
         }, function(reject) {
-            console.error('Upload client models failure');
+            console.error('Failed to upload client models');
             deferred.reject(task);
         });
     });
@@ -461,11 +484,12 @@ function createClientModel(task) {
                     deferred.resolve(task);
                 } else {
 
-                    console.error('Create client model ' + task.clientModels.Name + ' fail.');
+                    console.error('Failed to create client model ' + '[' + task.clientModels.Name + ']');
+
                     var notice = $('#admin .notice p').text();
 
                     if (notice) {
-                        console.error('Error shows at portal notice area:', notice);
+                        console.error('Error shown in Portals - ', notice);
                     }
 
                     deferred.reject(task);
@@ -503,10 +527,10 @@ function downloadDomainConfig(task) {
                 return task;
             });
         }).then(function(task) {
-            console.info('Download domain config successfully');
+            console.info('Successfully downloaded domain config');
             return task;
         }, function() {
-            console.error('Download domain config failure');
+            console.error('Failed to download domain config');
             return task;
         });
 }
@@ -525,12 +549,15 @@ function uploadDomainConfig(task) {
                 task.fileContent.config.pricing_planid4 = '';
             }
 
-            return api.uploadDomainConfig(task);
-        }).then(function() {
-            console.info('Upload domain config successfully');
-            return task;
+            return api.uploadDomainConfig(task).then(function() {
+                console.info('Successfully uploaded domain config');
+                return task;
+            }, function() {
+                console.error('Failed to upload domain config');
+                return task;
+            });
         }, function() {
-            console.error('Upload domain config failure');
+            console.error('Failed to read domain_config.json');
             return task;
         });
 }
@@ -545,8 +572,8 @@ function readFile(task, path) {
             task.fileContent = JSON.parse(fileContent);
             deferred.resolve(task);
         }, function(err) {
-            console.error('Read file failure');
-            deferred.reject('failureed to read file');
+            // console.error('Failed to read file');
+            deferred.reject('Failed to read file');
         });
 
     return deferred.promise;
@@ -560,10 +587,10 @@ function saveFile(fsPath, contains) {
 
         fsWriteFile(fsPath, contains)
             .then(function() {
-                debug('The file was saved!');
+                debug('File saved!');
                 deferred.resolve();
             }).catch(function(err) {
-                deferred.reject('failureed to wirte file');
+                deferred.reject('Failed to read file');
             });
     });
 
@@ -575,10 +602,10 @@ function authenticate(task) {
 
     var useCookie = function(cookie) {
         debug(cookie);
-        cookieParesed = JSON.parse(cookie);
+        cookieParsed = JSON.parse(cookie);
         task[task.current].cookie = cookie;
 
-        if (!cookieParesed[task[task.current].domain]) {
+        if (!cookieParsed[task[task.current].domain]) {
             promptPwd('cookie not found ');
             return;
         }
@@ -587,7 +614,6 @@ function authenticate(task) {
     };
 
     var promptPwd = function() {
-        debug('no cookies found');
 
         if (task[task.current].auth.username && task[task.current].auth.password) {
             deferred.resolve(task);
@@ -598,7 +624,7 @@ function authenticate(task) {
                 deferred.resolve(task);
             });
         } else {
-            deferred.reject('require authentication to proceed ');
+            deferred.reject('Requires authentication to proceed');
         }
     };
 
@@ -624,6 +650,8 @@ function loadCookie() {
 function saveCookie(cookie) {
     return Q.nfcall(fs.writeFile, COOKIE_PATH, JSON.stringify(cookie), 'utf8');
 }
+
+exports.domainAlive = domainAlive;
 
 exports.downloadThemes = downloadThemes;
 exports.uploadThemes = uploadThemes;

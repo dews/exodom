@@ -13,14 +13,14 @@ var path = require('path');
 var utility = require('./utility.js');
 
 program
-    .usage('<source domain> [target domain] <-u> [option]')
-    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
-    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
-    .option('-i, --interactive', 'Show hint, let you decide update existing theme, client or not. When this option is omit, skip update existing theme, client')
-    .option('-p, --path <path>', 'Saving path, if omit, using ./domainName')
-    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
-    .option('-u, --user <account:password,[account:password]>', 'First is for source domain, second is for target domain. If you ommit the password, you can input when prompt')
-    .option('-w, --domain-widgets', 'work on widget');
+    .usage('<source domain> [target domain] -u [options]')
+    .option('-c, --client-models [device_rid]', 'Sync client-models. If [device_rid] is omitted, use the same [device_rid] as the source domain\'s.')
+    .option('-d, --domain-config', 'Sync domain config. Requires global admin access to upload.')
+    .option('-i, --interactive', 'Show hints. Prompt users to overwrite existing themes, client models, domain widgets. If this option is not used, existing objects will be skipped.')
+    .option('-p, --path <path>', 'Save files at the selected path, the default path is "./domain_url')
+    .option('-t, --theme [theme_id]', 'Sync themes. Domains should not have themes with the same name.')
+    .option('-u, --user <account:password,[account:password]>', 'Passwords can be omitted, users wll be prompted to input them. Two sets of credentials are required.')
+    .option('-w, --domain-widgets', 'Sync domain widgets.');
 
 program.parse(process.argv);
 
@@ -30,7 +30,7 @@ if (!program.args.length) {
 }
 
 if (program.args.length !== 2) {
-    console.error('Please enter target domain and source domain');
+    console.error('Please enter a source domain and a target domain');
     return;
 }
 
@@ -39,10 +39,11 @@ if (!/\./g.test(program.args[0]) || !/\./g.test(program.args[1])) {
     return;
 }
 
+var path = program.path ? path.join(program.path, program.args[0]) : path.normalize(program.args[0]);
 var task = {
     themeId: '',
-    origPath: path.normalize(program.path || program.args[0] || './'),
-    path: '',
+    origPath: path,
+    path: path,
     source: {
         domain: program.args[0] || '',
         auth: {
@@ -60,11 +61,9 @@ var task = {
         cookie: ''
     },
     interactive: program.interactive,
-    // Can switch between source and target.
+    // help switch between source and target.
     current: 'source'
 };
-
-task.path = task.origPath;
 
 if (program.user) {
     var ac = program.user.split(',');
@@ -81,37 +80,42 @@ if (program.user) {
 
         if (targetAc) {
             prompt.get([{
-                name: 'password for source domain',
+                name: 'Password for source domain: ',
                 required: true,
                 hidden: true
             }, {
-                name: 'password for target domain',
+                name: 'Password for target domain: ',
                 required: true,
                 hidden: true
             }], function(err, result) {
-                task.source.auth.password = result['password for source domain'];
-                task.target.auth.password = result['password for target domain'];
-                distribute();
+                task.source.auth.password = result['Password for source domain: '];
+                task.target.auth.password = result['Password for target domain: '];
+                utility.domainAlive(task).then(function() {
+                    distribute();
+                });
             });
 
         } else {
             prompt.get([{
-                name: 'password for both domain',
+                name: 'Password for both domains: ',
                 required: true,
                 hidden: true
             }], function(err, result) {
-                task.source.auth.password = result['password for both domain'];
-                task.target.auth.password = result['password for both domain'];
-                distribute();
+                task.source.auth.password = result['Password for both domains: '];
+                task.target.auth.password = result['Password for both domains: '];
+                utility.domainAlive(task).then(function() {
+                    distribute();
+                });
             });
         }
 
     }
 
 } else {
-    console.error('Please enter you user acconut, use -u');
+    console.error('Please include your user account with -u');
     return;
 }
+
 
 function distribute() {
     var promises = [];

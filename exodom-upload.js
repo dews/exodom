@@ -12,14 +12,14 @@ var path = require('path');
 var utility = require('./utility.js');
 
 program
-    .usage('exodom-upload <domain> <-u> [option]')
-    .option('-c, --client-models [device_rid]', 'Work on client-models. If [device_rid] omit, use same as source domain')
-    .option('-d, --domain-config', 'Work on domain config, if you want to upload, you need to have global admin')
-    .option('-i, --interactive', 'Whow hint, let you decide update existing theme, client or not. When this option is omit, skip update existing theme, client')
-    .option('-p, --path <path>', 'Download file path, if omit, using ./domainName')
-    .option('-t, --theme [theme_id]', 'work on theme. Please avoid themes have same name.')
-    .option('-u, --user <account:password>', 'If you the ommit password, you can input when prompt')
-    .option('-w, --domain-widgets', 'Work on widgets');
+    .usage('<domain> -u [options]')
+    .option('-c, --client-models [device_rid]', 'Upload client-models. If [device_rid] is omitted, use the same [device_rid] as the source domain\'s.')
+    .option('-d, --domain-config', 'Upload domain config. Requires global admin access to upload.')
+    .option('-i, --interactive', 'Show hints. Prompt users to overwrite existing themes, client models, domain widgets. If this option is not used, existing objects will be skipped.')
+    .option('-p, --path <path>', 'Look for files in the domain_url folder under your current working directory. If a path was specified, exodom will look for files in the specified path.')
+    .option('-t, --theme [theme_id]', 'Upload themes. Domains should not have themes with the same name.')
+    .option('-u, --user <account:password>', 'Passwords can be omitted, users wll be prompted to input them.')
+    .option('-w, --domain-widgets', 'Upload domain widgets');
 
 program.parse(process.argv);
 
@@ -29,14 +29,15 @@ if (!program.args.length) {
 }
 
 if (!/\./g.test(program.args[0])) {
-    console.error('please enter correct domain name');
+    console.error('Please enter a correct domain name');
     return;
 }
 
+var path = program.path ? program.path : path.normalize(program.args[0]);
 var task = {
     themeId: '',
-    origPath: path.normalize(program.path || program.args[0] || './'),
-    path: '',
+    origPath: path,
+    path: path,
     target: {
         domain: program.args[0] || '',
         auth: {
@@ -46,11 +47,9 @@ var task = {
         cookie: ''
     },
     interactive: program.interactive,
-    // Can switch between source and target.
+    // help switch between source and target.
     current: 'target'
 };
-
-task.path = task.origPath;
 
 if (program.user) {
     var ac = program.user.split(',');
@@ -58,20 +57,24 @@ if (program.user) {
 
     if (ac[0].split(':')[1]) {
         task.target.auth.password = ac[0].split(':')[1];
-        distribute();
+        utility.domainAlive(task).then(function() {
+            distribute();
+        });
     } else {
         prompt.start();
         prompt.get([{
-            name: 'password',
+            name: 'password: ',
             required: true,
             hidden: true
         }], function(err, result) {
             task.target.auth.password = result.password;
-            distribute();
+            utility.domainAlive(task).then(function() {
+                distribute();
+            });
         });
     }
 } else {
-    console.error('please enter you user acconut, use -u');
+    console.error('Please include your user account with -u');
     return;
 }
 
