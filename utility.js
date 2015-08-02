@@ -128,27 +128,29 @@ function uploadWidgets(task) {
 }
 
 function downloadThemes(task) {
-    return api.downloadTheme(task).then(function(task) {
-        var contain = JSON.parse(task.contain);
-        var fsPath = path.join(task.origPath, 'themes');
-        var promise = [];
+    var fsPath = path.join(task.origPath, 'themes');
+    return removeFile(fsPath).then(function () {
+            return api.downloadTheme(task);
+        }).then(function(task) {
+            var contain = JSON.parse(task.contain);
+            var promise = [];
 
-        contain.forEach(function(theme, i) {
-            //replace empty space with '_'
-            theme.name = theme.name.replace(/\s+/g, '_');
+            contain.forEach(function(theme, i) {
+                //replace empty space with '_'
+                theme.name = theme.name.replace(/\s+/g, '_');
 
-            promise.push(saveFile(path.join(fsPath, theme.name + '_' + theme.id + '.json'), JSON.stringify(theme, null, 4)));
-            promise.push(saveImage(path.join(fsPath, 'img_' + theme.name + '_' + theme.id), theme));
+                promise.push(saveFile(path.join(fsPath, theme.name + '_' + theme.id + '.json'), JSON.stringify(theme, null, 4)));
+                promise.push(saveImage(path.join(fsPath, 'img_' + theme.name + '_' + theme.id), theme));
+            });
+
+            return Q.all(promise).then(function() {
+                console.info('Successfully downloaded themes');
+                return task;
+            }, function() {
+                console.error('Failed to download themes');
+                return task;
+            });
         });
-
-        return Q.all(promise).then(function() {
-            console.info('Successfully downloaded themes');
-            return task;
-        }, function() {
-            console.error('Failed to download themes');
-            return task;
-        });
-    });
 }
 
 function uploadThemes(task) {
@@ -564,7 +566,7 @@ function uploadDomainConfig(task) {
 
 function readFile(task, path) {
     var deferred = Q.defer();
-    var fsReadFile = Q.denodeify(fs.readFile);
+    var fsReadFile = Q.nfbind(fs.readFile);
     this.path = path || task.path;
 
     fsReadFile(this.path, 'utf-8')
@@ -579,11 +581,26 @@ function readFile(task, path) {
     return deferred.promise;
 }
 
+function removeFile(path) {
+    var deferred = Q.defer();
+    var fsRemove = Q.nfbind(fs.remove);
+    this.path = path || task.path;
+
+    fsRemove(path).then(function() {
+        deferred.resolve();
+    },function(err) {
+        console.error('Failed to remove file');
+        deferred.reject('Failed to remove file');
+    });
+
+    return deferred.promise;
+}
+
 function saveFile(fsPath, contains) {
     var deferred = Q.defer();
 
     fs.ensureDir(path.dirname(fsPath), function() {
-        var fsWriteFile = Q.denodeify(fs.writeFile);
+        var fsWriteFile = Q.nfbind(fs.writeFile);
 
         fsWriteFile(fsPath, contains)
             .then(function() {
