@@ -540,7 +540,6 @@ function downloadDomainConfig(task) {
 function uploadDomainConfig(task) {
     return readFile(task, task.origPath + '/domain_config.json')
         .then(function(task) {
-            task.current = 'target';
 
             // When target domain don't have pricing_planid1, upload would fail.
             // so reset it, prevent trouble.
