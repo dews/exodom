@@ -354,7 +354,7 @@ function html(opt, task) {
             console.error('Invalid Email or Password.');
         }
 
-
+        console.error('Server respond: ', body);
         deferred.reject(opt.method + ' failed');
     });
 

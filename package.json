@@ -1,6 +1,6 @@
 {
   "name": "exodom",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A tool to ease the pain of syncing data across domains",
   "main": "",
   "repository": "git@github.com:dews/exodom.git",
@@ -31,6 +31,7 @@
     "request": "^2.36.0"
   },
   "devDependencies": {
+    "mocha": "^2.2.5",
     "request-debug": "^0.1.1"
   }
 }
