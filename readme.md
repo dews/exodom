@@ -1,6 +1,8 @@
 # Exodom
 #### A tool to ease the pain of syncing data across domains
 
+[![Join the chat at https://gitter.im/dews/exodom](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dews/exodom?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ### Usage:
 
     exodom download <domain> [options]
