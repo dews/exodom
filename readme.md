@@ -1,4 +1,7 @@
 # Exodom
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/dews/exodom.svg)](https://greenkeeper.io/)
+
 #### A tool to ease the pain of syncing data across domains
 
 ### Usage:
